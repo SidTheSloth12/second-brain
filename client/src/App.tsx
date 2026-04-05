@@ -7,6 +7,7 @@ import { SearchPage } from './pages/SearchPage'
 import { NoteEditPage } from './pages/notes/NoteEditPage'
 import { NoteNewPage } from './pages/notes/NoteNewPage'
 import { NotesIndexPage } from './pages/notes/NotesIndexPage'
+import { NotesGraphPage } from './pages/notes/NotesGraphPage'
 import { NotesLayout } from './pages/notes/NotesLayout'
 import { TasksPage } from './pages/TasksPage'
 import { LoginPage } from './pages/LoginPage'
@@ -48,6 +49,7 @@ export default function App() {
         }
       >
         <Route index element={<NotesIndexPage />} />
+        <Route path="graph" element={<NotesGraphPage />} />
         <Route path="new" element={<NoteNewPage />} />
         <Route path=":noteId" element={<NoteEditPage />} />
       </Route>

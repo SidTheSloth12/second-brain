@@ -41,8 +41,7 @@ router.get('/', async (req, res) => {
           ) AS rank
         FROM notes n
         WHERE n.user_id = $1::uuid
-          AND (SELECT tsq FROM q) IS NOT NULL
-          AND to_tsvector('english', coalesce(n.title, '') || ' ' || coalesce(n.content, '')) @@ (SELECT tsq FROM q)
+          AND (coalesce(n.title, '') ILIKE '%' || $2::text || '%' OR coalesce(n.content, '') ILIKE '%' || $2::text || '%')
         UNION ALL
         SELECT
           'journal'::text,
@@ -61,12 +60,11 @@ router.get('/', async (req, res) => {
           )
         FROM journal_entries j
         WHERE j.user_id = $1::uuid
-          AND (SELECT tsq FROM q) IS NOT NULL
-          AND to_tsvector('english', coalesce(j.title, '') || ' ' || coalesce(j.body_text, '')) @@ (SELECT tsq FROM q)
+          AND (coalesce(j.title, '') ILIKE '%' || $2::text || '%' OR coalesce(j.body_text, '') ILIKE '%' || $2::text || '%')
       )
       SELECT type, result_id, title, entry_date, snippet, rank
       FROM hits
-      ORDER BY rank DESC NULLS LAST
+      ORDER BY rank DESC NULLS LAST, title ASC
       LIMIT $3::int
     `
 

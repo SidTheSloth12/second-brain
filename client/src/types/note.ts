@@ -2,6 +2,7 @@ export type NoteListItem = {
   id: string
   title: string
   slug: string
+  folderId: string | null
   updatedAt: string
 }
 

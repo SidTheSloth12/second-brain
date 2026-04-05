@@ -73,7 +73,7 @@ router.get('/', async (req, res) => {
   const userId = userIdFrom(req)
   try {
     const result = await pool.query<NoteSummaryRow>(
-      `SELECT id, user_id, title, slug, created_at, updated_at
+      `SELECT id, user_id, title, slug, folder_id, created_at, updated_at
        FROM notes WHERE user_id = $1
        ORDER BY updated_at DESC`,
       [userId]
@@ -85,12 +85,30 @@ router.get('/', async (req, res) => {
   }
 })
 
+router.get('/graph', async (req, res) => {
+  const userId = userIdFrom(req)
+  try {
+    const notesResult = await pool.query(`SELECT id, title FROM notes WHERE user_id = $1`, [userId])
+    const linksResult = await pool.query(
+      `SELECT from_note_id as source, to_note_id as target FROM note_links WHERE user_id = $1`,
+      [userId]
+    )
+    res.json({
+      nodes: notesResult.rows,
+      links: linksResult.rows,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Could not load graph data' })
+  }
+})
+
 router.get('/:id/backlinks', async (req, res) => {
   const userId = userIdFrom(req)
   const id = req.params.id
   try {
     const result = await pool.query<NoteSummaryRow>(
-      `SELECT n.id, n.user_id, n.title, n.slug, n.created_at, n.updated_at
+      `SELECT n.id, n.user_id, n.title, n.slug, n.folder_id, n.created_at, n.updated_at
        FROM notes n
        INNER JOIN note_links l ON l.from_note_id = n.id
        WHERE l.to_note_id = $1 AND n.user_id = $2
@@ -109,7 +127,7 @@ router.get('/:id', async (req, res) => {
   const id = req.params.id
   try {
     const result = await pool.query<NoteRow>(
-      `SELECT id, user_id, title, slug, content, created_at, updated_at
+      `SELECT id, user_id, title, slug, content, folder_id, created_at, updated_at
        FROM notes WHERE user_id = $1 AND id = $2`,
       [userId, id]
     )
@@ -132,16 +150,17 @@ router.post('/', async (req, res) => {
     return
   }
   const content = typeof req.body?.content === 'string' ? req.body.content : ''
+  const folderId = typeof req.body?.folderId === 'string' ? req.body.folderId : null
 
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
     const slug = await nextUniqueSlug(client, userId, title, null)
     const ins = await client.query<NoteRow>(
-      `INSERT INTO notes (user_id, title, slug, content)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, user_id, title, slug, content, created_at, updated_at`,
-      [userId, title, slug, content]
+      `INSERT INTO notes (user_id, title, slug, content, folder_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, user_id, title, slug, content, folder_id, created_at, updated_at`,
+      [userId, title, slug, content, folderId]
     )
     const row = ins.rows[0]
     await syncNoteLinks(client, userId, row.id, content)
@@ -184,6 +203,11 @@ router.patch('/:id', async (req, res) => {
     updates.push(`content = $${i++}`)
     values.push(newContent)
   }
+  if (req.body?.folderId !== undefined) {
+    const folderId = req.body.folderId === null ? null : String(req.body.folderId)
+    updates.push(`folder_id = $${i++}`)
+    values.push(folderId)
+  }
 
   if (updates.length === 0) {
     res.status(400).json({ error: 'No valid fields to update' })
@@ -194,7 +218,7 @@ router.patch('/:id', async (req, res) => {
   try {
     await client.query('BEGIN')
     const cur = await client.query<NoteRow>(
-      `SELECT id, user_id, title, slug, content, created_at, updated_at
+      `SELECT id, user_id, title, slug, content, folder_id, created_at, updated_at
        FROM notes WHERE user_id = $1 AND id = $2 FOR UPDATE`,
       [userId, id]
     )
@@ -221,7 +245,7 @@ router.patch('/:id', async (req, res) => {
     const result = await client.query<NoteRow>(
       `UPDATE notes SET ${updates.join(', ')}
        WHERE user_id = $${userParam} AND id = $${idParam}
-       RETURNING id, user_id, title, slug, content, created_at, updated_at`,
+       RETURNING id, user_id, title, slug, content, folder_id, created_at, updated_at`,
       values
     )
 

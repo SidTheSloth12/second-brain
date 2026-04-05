@@ -44,12 +44,24 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_user_starts ON events (user_id, starts_at);
 CREATE INDEX IF NOT EXISTS idx_events_user_overlap ON events (user_id, starts_at, ends_at);
 
+CREATE TABLE IF NOT EXISTS folders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES folders (id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_folders_user ON folders (user_id);
+
 CREATE TABLE IF NOT EXISTS notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   slug TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
+  folder_id UUID REFERENCES folders (id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT notes_user_slug_unique UNIQUE (user_id, slug)

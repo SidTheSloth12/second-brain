@@ -8,6 +8,7 @@ import journalRoutes from './routes/journal'
 import noteRoutes from './routes/notes'
 import searchRoutes from './routes/search'
 import taskRoutes from './routes/tasks'
+import folderRoutes from './routes/folders'
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   console.error('JWT_SECRET must be set in .env and be at least 32 characters (e.g. openssl rand -base64 32).')
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/calendar', calendarRoutes)
+app.use('/api/folders', folderRoutes)
 app.use('/api/notes', noteRoutes)
 app.use('/api/journal', journalRoutes)
 app.use('/api/search', searchRoutes)

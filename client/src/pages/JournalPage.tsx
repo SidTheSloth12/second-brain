@@ -11,11 +11,6 @@ import {
 } from '../lib/journalApi'
 import { localISODate, parseISODateLocal } from '../lib/localDate'
 
-function addMonths(ym: string, delta: number): string {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m - 1 + delta, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
 
 function JournalEntryEditor({
   date,
@@ -164,24 +159,21 @@ export function JournalPage() {
     <AppShell wide>
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <aside className="w-full shrink-0 lg:w-56">
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(`/journal/${addMonths(month, -1)}-01`)}
-              className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
-              aria-label="Previous month"
-            >
-              ←
-            </button>
-            <span className="text-sm font-medium text-slate-800">{month}</span>
-            <button
-              type="button"
-              onClick={() => navigate(`/journal/${addMonths(month, 1)}-01`)}
-              className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
-              aria-label="Next month"
-            >
-              →
-            </button>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="journal-date" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              Selected Date
+            </label>
+            <input
+              id="journal-date"
+              type="date"
+              value={date}
+              onChange={(e) => {
+                if (e.target.value) {
+                  navigate(`/journal/${e.target.value}`)
+                }
+              }}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 hover:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            />
           </div>
           <p className="mt-2 text-xs text-slate-500">Days with entries</p>
           <nav className="mt-2 max-h-64 space-y-0.5 overflow-y-auto lg:max-h-[calc(100vh-12rem)]">
