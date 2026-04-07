@@ -1,23 +1,29 @@
-# 🧠 Second Brain
+# Second Brain
 
-A personal knowledge management web app inspired by Obsidian — built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface.
-
----
-
-## ✨ Features
-
-- **📝 Notes** — Create and edit markdown notes with a live-preview editor (CodeMirror 6). Organize notes into folders with drag-and-drop support.
-- **🕸️ Knowledge Graph** — Visualize connections between notes as an interactive force-directed graph. Click any node to navigate directly to that note.
-- **✅ Tasks** — Manage tasks with priorities, due dates, subtasks, and completion states. Includes confetti on task completion 🎉
-- **📅 Calendar** — Schedule and view events on a monthly calendar with a clean agenda sidebar.
-- **📓 Journal** — Write daily journal entries with a minimal, distraction-free interface.
-- **🔍 Full-Text Search** — Search across all notes and content instantly with partial string matching.
-- **🌗 Dark / Light Mode** — Smooth theme toggle with a consistent dark-first design.
-- **🔐 Authentication** — JWT-based auth with bcrypt password hashing and protected routes.
+A personal knowledge management web app inspired by Obsidian — built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface. Also built as a genuine learning project, which means this README doubles as a small monument to stubbornness :)
 
 ---
 
-## 🛠️ Tech Stack
+## The Goal
+
+The basic idea: one place for everything: notes, tasks, journal, calendar. Wired together so your thinking actually connects. No more switching between five apps and losing the thread. No more tutorial projects that never ship. Real, usable and most importantly, *yours*.
+
+---
+
+## Features
+
+- **Notes** — Create and edit markdown notes with a live-preview editor (CodeMirror 6). Organize notes into folders with drag-and-drop support.
+- **Knowledge Graph** — Visualize connections between notes as an interactive force-directed graph. Click any node to navigate directly to that note.
+- **Tasks** — Manage tasks with priorities, due dates, subtasks, and completion states. Includes confetti on task completion :)
+- **Calendar** — Schedule and view events on a monthly calendar with a clean agenda sidebar.
+- **Journal** — Write daily journal entries with a minimal, distraction-free interface. 
+- **Full-Text Search** — Search across all notes and content instantly with partial string matching.
+- **Dark / Light Mode** — Theme toggle.
+- **Authentication** — JWT-based auth with bcrypt password hashing and protected routes. 
+
+---
+
+## Tech Stack
 
 ### Frontend
 | Technology | Purpose |
@@ -43,14 +49,28 @@ A personal knowledge management web app inspired by Obsidian — built to captur
 | JWT | Authentication tokens |
 | bcryptjs | Password hashing |
 
+### Deployment
+| Where | What |
+|---|---|
+| Vercel | Frontend |
+| Railway | Backend |
+
 ---
 
-## 🚀 Getting Started
+## Architecture
+
+Standard client-server setup. The frontend handles all UI and interaction, talking to a REST API backend that manages business logic and data. PostgreSQL stores everything — notes, tasks, events, journal entries — with a dedicated `note_links` table tracking connections between notes for the graph view.
+
+Authentication runs through JWT tokens. The graph view queries note relationships from the database and renders them as an interactive force-directed graph on the frontend. The whole thing actually talks to itself like it's supposed to.
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
 - Node.js ≥ 18
-- A PostgreSQL database (local or [Supabase](https://supabase.com))
+- A PostgreSQL database (local or [Supabase](https://supabase.com) — Supabase is beginner-friendlier and honestly just easier)
 
 ### 1. Clone the repository
 
@@ -76,10 +96,9 @@ FRONTEND_ORIGINS=http://localhost:5173
 PORT=5000
 ```
 
-Initialize the database:
+Initialize the database (run these in order — order matters):
 
 ```bash
-# Run the SQL files in order against your Postgres instance
 psql $DATABASE_URL -f sql/init.sql
 psql $DATABASE_URL -f sql/folders.sql
 psql $DATABASE_URL -f sql/notes.sql
@@ -114,11 +133,11 @@ Start the client:
 npm run dev
 ```
 
-The app will be available at **http://localhost:5173**.
+App is live at **http://localhost:5173**. Go forth and organise your thoughts.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 second-brain/
@@ -157,9 +176,9 @@ second-brain/
 
 ---
 
-## 🔌 API Overview
+## API Overview
 
-All routes are prefixed with `/api` and require a `Bearer` JWT token (except `/api/auth`).
+All routes are prefixed with `/api` and require a `Bearer` JWT token — except `/api/auth`, which is how you get the token in the first place.
 
 | Method | Route | Description |
 |---|---|---|
@@ -173,4 +192,15 @@ All routes are prefixed with `/api` and require a `Bearer` JWT token (except `/a
 | `GET/POST` | `/api/events` | List / create calendar events |
 | `GET` | `/api/search?q=` | Full-text search across notes |
 
+---
 
+## Why Did I Build A "Second Brain"?
+> *My first brain already has enough going on.*
+
+I miss things if I don't write them down, and I got tired of my notes living in one app, my tasks in another, and my calendar somewhere else entirely. Yes, Google has done the integration thing already, and done it well. What I've built is essentially a budget version of that, except with linked notes and a graph view, which Google doesn't have.
+The Obsidian-style notes, folder structure, and graph view are how I (try to) organize my thoughts and ideas. I think about a lot of things. They need a map. The calendar and tasks just keep my life running smoothly enough that I have time to do that.
+
+
+---
+
+*I might add a habit tracker to this in the future*
