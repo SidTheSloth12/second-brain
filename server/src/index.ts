@@ -45,6 +45,15 @@ app.use('/api/notes', noteRoutes)
 app.use('/api/journal', journalRoutes)
 app.use('/api/search', searchRoutes)
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+const server = app.listen(PORT, () => {
+  console.log(`Server successfully started on port ${PORT}`)
+})
+
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please kill the existing process or use a different port.`)
+  } else {
+    console.error('Server failed to start:', err)
+  }
+  process.exit(1)
 })

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import axios from 'axios'
-import { AppShell } from '../components/AppShell'
 import { CalendarEventModal } from '../components/calendar/CalendarEventModal'
 import { DayAgenda } from '../components/calendar/DayAgenda'
 import { MonthGrid } from '../components/calendar/MonthGrid'
@@ -144,12 +143,12 @@ export function CalendarPage() {
   const busy = createMut.isPending || updateMut.isPending || deleteMut.isPending
 
   return (
-    <AppShell wide>
+    <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Calendar</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Calendar</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Tasks with due dates and events stay in sync; edit tasks on the Tasks page.
             </p>
           </div>
@@ -160,7 +159,7 @@ export function CalendarPage() {
                 type="button"
                 onClick={() => setView(v)}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize ${
-                  view === v ? 'bg-violet-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
+                  view === v ? 'bg-violet-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700'
                 }`}
               >
                 {v}
@@ -174,7 +173,7 @@ export function CalendarPage() {
             <button
               type="button"
               onClick={navPrev}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               aria-label="Previous"
             >
               ←
@@ -182,22 +181,22 @@ export function CalendarPage() {
             <button
               type="button"
               onClick={navToday}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Today
             </button>
             <button
               type="button"
               onClick={navNext}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               aria-label="Next"
             >
               →
             </button>
-            <h2 className="ml-2 text-lg font-semibold text-slate-800">{title}</h2>
+            <h2 className="ml-2 text-lg font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               <input
                 type="checkbox"
                 checked={includeCompleted}
@@ -217,7 +216,7 @@ export function CalendarPage() {
         </div>
 
         {errMsg && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
             {errMsg}
           </div>
         )}
@@ -244,9 +243,9 @@ export function CalendarPage() {
           <DayAgenda day={anchor} tasks={tasks} events={events} onEditEvent={openEditEvent} />
         )}
 
-        <p className="text-xs text-slate-500">
-          <span className="text-violet-800">· Tasks</span> ·{' '}
-          <span className="text-emerald-800">◆ Events</span>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-violet-700 dark:text-violet-400">· Tasks</span> ·{' '}
+          <span className="text-emerald-700 dark:text-emerald-400">◆ Events</span>
         </p>
       </div>
 
@@ -269,6 +268,6 @@ export function CalendarPage() {
           busy={busy}
         />
       )}
-    </AppShell>
+    </div>
   )
 }

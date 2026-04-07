@@ -4,6 +4,7 @@ export type TaskStatus = 'open' | 'completed'
 export interface TaskRow {
   id: string
   user_id: string
+  task_list_id: string | null
   title: string
   description: string | null
   due_at: Date | null
@@ -25,6 +26,7 @@ export function taskRowToJson(row: TaskRow) {
     status: row.status as TaskStatus,
     completedAt: row.completed_at ? row.completed_at.toISOString() : null,
     sortOrder: row.sort_order,
+    listId: row.task_list_id,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   }

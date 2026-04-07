@@ -1,9 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { AppShell } from '../components/AppShell'
+import { MinimalSpinner } from '../components/Loaders'
 import { groupTasksForDisplay } from '../lib/taskGroups'
-import { createTask, deleteTask, fetchTasks, updateTask } from '../lib/tasksApi'
+import {
+  createTask,
+  createTaskList,
+  deleteTask,
+  deleteTaskList,
+  fetchTaskLists,
+  fetchTasks,
+  updateTask,
+  updateTaskList,
+} from '../lib/tasksApi'
+import { useConfetti } from '../hooks/useConfetti'
 import type { Task, TaskFilter, TaskPriority } from '../types/task'
 
 function toDatetimeLocalValue(iso: string | null): string {
@@ -26,15 +36,18 @@ function formatDue(iso: string | null): string {
 
 function priorityBadge(p: TaskPriority) {
   const styles: Record<TaskPriority, string> = {
-    low: 'bg-slate-100 text-slate-600',
-    medium: 'bg-amber-100 text-amber-800',
-    high: 'bg-rose-100 text-rose-800',
+    low: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+    medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+    high: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
   }
   const labels: Record<TaskPriority, string> = { low: 'Low', medium: 'Medium', high: 'High' }
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[p]}`}>{labels[p]}</span>
   )
 }
+
+const inputCls =
+  'w-full text-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-400'
 
 export function TasksPage() {
   const queryClient = useQueryClient()
@@ -44,38 +57,97 @@ export function TasksPage() {
   const [newTitle, setNewTitle] = useState('')
   const [newDescription, setNewDescription] = useState('')
   const [newDue, setNewDue] = useState('')
-  const [newPriority, setNewPriority] = useState<TaskPriority>('medium')
-  const [showNewDetails, setShowNewDetails] = useState(false)
+  const [newPriority, setNewPriority] = useState<TaskPriority>('low')
+  const [selectedListId, setSelectedListId] = useState<string | null>(null)
+  const [newListName, setNewListName] = useState('')
+  const [renameListName, setRenameListName] = useState('')
+
+  const {
+    data: lists = [],
+  } = useQuery({
+    queryKey: ['task-lists'],
+    queryFn: fetchTaskLists,
+  })
+
+  useEffect(() => {
+    if (!selectedListId && lists.length > 0) {
+      setSelectedListId(lists[0].id)
+    }
+    if (selectedListId && !lists.some((list) => list.id === selectedListId)) {
+      setSelectedListId(lists[0]?.id ?? null)
+    }
+  }, [lists, selectedListId])
+
+  useEffect(() => {
+    const selected = lists.find((list) => list.id === selectedListId)
+    if (selected) {
+      setRenameListName(selected.name)
+    }
+  }, [lists, selectedListId])
+
+  const selectedList = lists.find((list) => list.id === selectedListId) ?? null
 
   const { data: tasks = [], isLoading, error } = useQuery({
-    queryKey: ['tasks', filter],
-    queryFn: () => fetchTasks(filter),
+    queryKey: ['tasks', filter, selectedListId],
+    queryFn: () => (selectedListId ? fetchTasks(filter, selectedListId) : Promise.resolve([])),
+    enabled: Boolean(selectedListId),
   })
 
   const groups = useMemo(() => groupTasksForDisplay(tasks), [tasks])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    queryClient.invalidateQueries({ queryKey: ['task-lists'] })
     queryClient.invalidateQueries({ queryKey: ['calendar'] })
   }
 
   const createMut = useMutation({
-    mutationFn: () =>
-      createTask({
+    mutationFn: () => {
+      if (!selectedListId) {
+        throw new Error('Please select a task list before adding a task.')
+      }
+      return createTask({
         title: newTitle.trim(),
         description: newDescription.trim() || null,
         dueAt: newDue ? new Date(newDue).toISOString() : null,
         priority: newPriority,
-      }),
+        listId: selectedListId,
+      })
+    },
     onSuccess: () => {
       setNewTitle('')
       setNewDescription('')
       setNewDue('')
-      setNewPriority('medium')
-      setShowNewDetails(false)
+      setNewPriority('low')
       invalidate()
     },
   })
+
+  const createListMut = useMutation({
+    mutationFn: (body: { name: string }) => createTaskList(body),
+    onSuccess: (list) => {
+      setNewListName('')
+      setSelectedListId(list.id)
+      invalidate()
+    },
+  })
+
+  const renameListMut = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateTaskList(id, { name }),
+    onSuccess: () => {
+      invalidate()
+    },
+  })
+
+  const deleteListMut = useMutation({
+    mutationFn: deleteTaskList,
+    onSuccess: () => {
+      setSelectedListId(null)
+      invalidate()
+    },
+  })
+
+  const confetti = useConfetti()
 
   const updateMut = useMutation({
     mutationFn: ({
@@ -99,6 +171,23 @@ export function TasksPage() {
     },
   })
 
+  async function handleToggleTaskStatus(task: Task) {
+    const nextStatus = task.status === 'completed' ? 'open' : 'completed'
+    try {
+      await updateMut.mutateAsync({
+        id: task.id,
+        patch: {
+          status: nextStatus,
+        },
+      })
+      if (nextStatus === 'completed') {
+        await confetti({ particleCount: 32, duration: 1200 })
+      }
+    } catch {
+      // Error handling is already done by the mutation state.
+    }
+  }
+
   const errMsg =
     error && axios.isAxiosError(error)
       ? (error.response?.data as { error?: string })?.error
@@ -117,226 +206,282 @@ export function TasksPage() {
   }
 
   return (
-    <AppShell title="Tasks">
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Tasks</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Due dates use the same timestamps the calendar will use later.
-          </p>
-        </div>
-
-        {errMsg && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {errMsg}
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="flex flex-col gap-8 md:flex-row md:items-start">
+        
+        {/* Left Sidebar */}
+        <div className="w-full shrink-0 md:w-64 space-y-8">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Tasks</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Manage your tasks and collections.
+            </p>
           </div>
-        )}
 
-        <div className="flex flex-wrap gap-2">
-          {(['open', 'all', 'completed'] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                filter === f
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {f === 'open' ? 'Active' : f === 'all' ? 'All' : 'Done'}
-            </button>
-          ))}
-        </div>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">New task</h2>
-          <form onSubmit={handleCreate} className="mt-4 space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1">
-                <label htmlFor="task-title" className="sr-only">
-                  Title
-                </label>
-                <input
-                  id="task-title"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="What needs to be done?"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!newTitle.trim() || createMut.isPending}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-              >
-                {createMut.isPending ? 'Adding…' : 'Add task'}
-              </button>
+          {errMsg && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300">
+              {errMsg}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowNewDetails((v) => !v)}
-              className="text-sm text-violet-600 hover:text-violet-800"
-            >
-              {showNewDetails ? 'Hide details' : 'Due date, priority, description'}
-            </button>
-            {showNewDetails && (
-              <div className="grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="task-due" className="block text-xs font-medium text-slate-600">
-                    Due
-                  </label>
-                  <input
-                    id="task-due"
-                    type="datetime-local"
-                    value={newDue}
-                    onChange={(e) => setNewDue(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="task-priority" className="block text-xs font-medium text-slate-600">
-                    Priority
-                  </label>
-                  <select
-                    id="task-priority"
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as TaskPriority)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label htmlFor="task-desc" className="block text-xs font-medium text-slate-600">
-                    Description
-                  </label>
-                  <textarea
-                    id="task-desc"
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    rows={2}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                  />
-                </div>
-              </div>
-            )}
-            {createMut.isError && (
-              <p className="text-sm text-red-600">
-                {axios.isAxiosError(createMut.error)
-                  ? (createMut.error.response?.data as { error?: string })?.error ?? 'Could not create'
-                  : 'Could not create'}
-              </p>
-            )}
-          </form>
-        </section>
+          )}
 
-        {isLoading ? (
-          <p className="text-center text-slate-500">Loading tasks…</p>
-        ) : tasks.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center text-slate-500">
-            No tasks yet. Add one above.
-          </p>
-        ) : (
-          <div className="space-y-10">
-            {groups.map((g) => (
-              <section key={g.id}>
-                <h2 className="mb-3 text-sm font-semibold text-slate-700">{g.label}</h2>
-                <ul className="space-y-2">
-                  {g.tasks.map((task) => (
-                    <li
-                      key={task.id}
-                      className={`rounded-xl border bg-white px-4 py-3 shadow-sm ${
-                        g.id === 'overdue' ? 'border-rose-200' : 'border-slate-200'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={task.status === 'completed'}
-                          onChange={() =>
-                            updateMut.mutate({
-                              id: task.id,
-                              patch: {
-                                status: task.status === 'completed' ? 'open' : 'completed',
-                              },
-                            })
-                          }
-                          className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                          aria-label={task.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`font-medium ${
-                                task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'
-                              }`}
-                            >
-                              {task.title}
-                            </span>
-                            {priorityBadge(task.priority)}
-                          </div>
-                          {task.description && (
-                            <p className="mt-1 text-sm text-slate-600 whitespace-pre-wrap">{task.description}</p>
-                          )}
-                          {task.dueAt && (
-                            <p className="mt-1 text-xs text-slate-500">Due {formatDue(task.dueAt)}</p>
-                          )}
-                        </div>
-                        <div className="flex shrink-0 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditing(task)}
-                            className="rounded-lg px-2 py-1 text-sm text-violet-600 hover:bg-violet-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm('Delete this task?')) deleteMut.mutate(task.id)
-                            }}
-                            className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+          <div className="space-y-1">
+            <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Status</h2>
+            {(['open', 'all', 'completed'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`w-full text-left rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  filter === f
+                    ? 'bg-violet-100 text-violet-900 dark:bg-violet-900/40 dark:text-violet-100'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200'
+                }`}
+              >
+                {f === 'open' ? 'Active' : f === 'all' ? 'All' : 'Completed'}
+              </button>
             ))}
           </div>
-        )}
 
-        {editing && (
-          <div
-            className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-4 sm:items-center"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="edit-task-title"
-          >
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-              <h2 id="edit-task-title" className="text-lg font-semibold text-slate-900">
-                Edit task
-              </h2>
-              <EditTaskForm
-                key={editing.id}
-                task={editing}
-                onCancel={() => setEditing(null)}
-                onSave={async (patch) => {
-                  await updateMut.mutateAsync({ id: editing.id, patch })
-                }}
-                isPending={updateMut.isPending}
+          <div className="space-y-2">
+            <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Lists</h2>
+            {lists.length === 0 ? (
+              <p className="px-1 text-xs text-slate-500 dark:text-slate-400">No lists yet.</p>
+            ) : (
+              <ul className="space-y-1">
+                {lists.map((list) => (
+                  <li key={list.id} className="group relative pr-8">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedListId(list.id)}
+                      className={`w-full block truncate text-left rounded-lg px-3 py-2 text-sm transition-colors ${
+                        list.id === selectedListId
+                          ? 'bg-violet-600 font-medium text-white shadow-sm shadow-violet-500/20 dark:bg-violet-600'
+                          : 'font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      {list.name}
+                    </button>
+                    {list.id === selectedListId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('Delete this list? Only empty lists can be deleted.')) {
+                            deleteListMut.mutate(list.id)
+                          }
+                        }}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1.5 text-violet-100 opacity-60 hover:bg-violet-700 hover:opacity-100 dark:text-violet-200"
+                        title="Delete list"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                createListMut.mutate({ name: newListName.trim() })
+              }}
+              className="pt-2"
+            >
+              <input
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                placeholder="+ Create new list"
+                className="w-full rounded-lg border-2 border-transparent bg-transparent px-3 py-2 text-sm font-medium text-slate-600 placeholder:text-slate-400 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-0 transition-all dark:text-slate-300 dark:placeholder:text-slate-500 dark:focus:bg-slate-800"
               />
-            </div>
+            </form>
           </div>
-        )}
+          
+          {(createListMut.isError || renameListMut.isError || deleteListMut.isError) && (
+            <div className="rounded-lg bg-red-50 p-2 text-xs text-red-600 dark:bg-red-900/30 dark:text-red-400">
+               Action failed. Ensure the list is empty before deleting.
+            </div>
+          )}
+        </div>
+
+        {/* Main Content */}
+        <div className="min-w-0 flex-1 space-y-6">
+          {/* Header/Rename List */}
+          {selectedList && (
+            <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-800/60 sm:flex-row sm:items-center sm:justify-between">
+              <input
+                value={renameListName}
+                onChange={(e) => setRenameListName(e.target.value)}
+                onBlur={() => renameListMut.mutate({ id: selectedList.id, name: renameListName.trim() })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur()
+                  }
+                }}
+                className="w-full max-w-sm rounded-lg border-transparent bg-transparent px-1 py-1 text-2xl font-semibold tracking-tight text-slate-900 hover:bg-slate-50 focus:border-violet-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:text-slate-100 dark:hover:bg-slate-800/50 dark:focus:bg-slate-800"
+              />
+              <span className="shrink-0 px-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+              </span>
+            </div>
+          )}
+
+          {/* New Task Input */}
+          {selectedList && (
+            <form onSubmit={handleCreate} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow focus-within:border-violet-300 focus-within:ring-4 focus-within:ring-violet-500/10 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-900/80 dark:focus-within:border-violet-500/50">
+              <div className="flex gap-2">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-300 dark:text-slate-600">
+                  <span className="text-xl">+</span>
+                </div>
+                <input
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Task name"
+                  className="h-10 w-full bg-transparent pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!newTitle.trim() || createMut.isPending}
+                  className="shrink-0 rounded-xl bg-violet-600 px-6 font-semibold text-white transition-opacity hover:bg-violet-700 disabled:opacity-0"
+                >
+                  Add
+                </button>
+              </div>
+              
+              <div className="mt-2 flex flex-wrap gap-3 pl-12 pr-4 pb-1">
+                <input
+                  type="datetime-local"
+                  value={newDue}
+                  onChange={(e) => setNewDue(e.target.value)}
+                  className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 transition-colors focus:border-violet-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:focus:bg-slate-800"
+                />
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value as TaskPriority)}
+                  className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors focus:border-violet-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:focus:bg-slate-800"
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+                <input
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                  className="min-w-[150px] flex-1 rounded-lg border border-transparent bg-slate-50/50 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100 focus:border-violet-500 focus:bg-slate-50 focus:outline-none dark:bg-slate-800/30 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:focus:bg-slate-800"
+                />
+              </div>
+            </form>
+          )}
+
+          {/* Task Stream */}
+          {isLoading ? (
+            <div className="flex flex-col gap-3 pt-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800/50" />
+              ))}
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 py-24 text-center dark:border-slate-700/50 dark:bg-slate-900/20">
+              <div className="mb-5 text-5xl opacity-80">📝</div>
+              <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Inbox Zero!</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Type a task above and press enter.</p>
+            </div>
+          ) : (
+            <div className="space-y-8 pt-2">
+              {groups.map((g) => (
+                <section key={g.id}>
+                  <h3 className="mb-4 text-sm font-bold tracking-wide text-slate-700 dark:text-slate-300">{g.label}</h3>
+                  <ul className="space-y-2.5">
+                    {g.tasks.map((task) => (
+                      <li
+                        key={task.id}
+                        className={`group cursor-default rounded-2xl border bg-white px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all ease-in-out hover:border-slate-300 hover:shadow-md dark:bg-slate-900/80 dark:hover:border-slate-600 ${
+                          g.id === 'overdue' ? 'border-amber-200 dark:border-amber-900/40' : 'border-slate-200 dark:border-slate-800/80'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <input
+                            type="checkbox"
+                            checked={task.status === 'completed'}
+                            onChange={() => void handleToggleTaskStatus(task)}
+                            className="mt-1 h-5 w-5 shrink-0 cursor-pointer rounded-full border-slate-300 text-violet-600 transition-transform active:scale-90 focus:ring-violet-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-800 dark:focus:ring-offset-slate-900"
+                            aria-label={task.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`text-base font-semibold transition-colors ${
+                                  task.status === 'completed' ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-900 dark:text-slate-100'
+                                }`}
+                              >
+                                {task.title}
+                              </span>
+                              {task.priority !== 'low' && priorityBadge(task.priority)}
+                            </div>
+                            {task.description && (
+                              <p className="mt-1.5 text-sm leading-relaxed text-slate-600 whitespace-pre-wrap dark:text-slate-400">{task.description}</p>
+                            )}
+                            {task.dueAt && (
+                              <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-500">
+                                <span className="opacity-70">⏱</span> {formatDue(task.dueAt)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 sm:flex-col">
+                            <button
+                              type="button"
+                              onClick={() => setEditing(task)}
+                              className="rounded-lg p-2 text-slate-400 transition-all hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 dark:hover:text-violet-400"
+                              title="Edit task"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm('Delete this task?')) deleteMut.mutate(task.id)
+                              }}
+                              className="rounded-lg p-2 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400"
+                              title="Delete task"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </AppShell>
+
+      {editing && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-4 backdrop-blur-sm transition-all sm:items-center dark:bg-slate-950/60"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-task-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 md:p-8 shadow-2xl dark:border dark:border-slate-800 dark:bg-slate-950">
+            <h2 id="edit-task-title" className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Edit Task
+            </h2>
+            <EditTaskForm
+              key={editing.id}
+              task={editing}
+              onCancel={() => setEditing(null)}
+              onSave={async (patch) => {
+                await updateMut.mutateAsync({ id: editing.id, patch })
+              }}
+              isPending={updateMut.isPending}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -368,71 +513,71 @@ function EditTaskForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <form onSubmit={handleSubmit} className="mt-6 space-y-5">
       <div>
-        <label htmlFor="edit-title" className="block text-xs font-medium text-slate-600">
+        <label htmlFor="edit-title" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
           Title
         </label>
         <input
           id="edit-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+          className={`mt-1.5 ${inputCls}`}
         />
       </div>
       <div>
-        <label htmlFor="edit-due" className="block text-xs font-medium text-slate-600">
-          Due
+        <label htmlFor="edit-due" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Due Date
         </label>
         <input
           id="edit-due"
           type="datetime-local"
           value={due}
           onChange={(e) => setDue(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+          className={`mt-1.5 ${inputCls}`}
         />
       </div>
       <div>
-        <label htmlFor="edit-priority" className="block text-xs font-medium text-slate-600">
+        <label htmlFor="edit-priority" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
           Priority
         </label>
         <select
           id="edit-priority"
           value={priority}
           onChange={(e) => setPriority(e.target.value as TaskPriority)}
-          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+          className={`mt-1.5 ${inputCls}`}
         >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
+          <option value="low">Low Priority</option>
+          <option value="medium">Medium Priority</option>
+          <option value="high">High Priority</option>
         </select>
       </div>
       <div>
-        <label htmlFor="edit-desc" className="block text-xs font-medium text-slate-600">
+        <label htmlFor="edit-desc" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
           Description
         </label>
         <textarea
           id="edit-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+          rows={4}
+          className={`mt-1.5 ${inputCls}`}
         />
       </div>
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isPending || !title.trim()}
-          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+          className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 transition-colors disabled:opacity-50 shadow-sm"
         >
-          {isPending ? 'Saving…' : 'Save'}
+          {isPending ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
     </form>

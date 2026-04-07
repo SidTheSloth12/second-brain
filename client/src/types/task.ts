@@ -1,6 +1,13 @@
 export type TaskPriority = 'low' | 'medium' | 'high'
 export type TaskStatus = 'open' | 'completed'
 
+export type TaskList = {
+  id: string
+  userId: string
+  name: string
+  sortOrder: number
+}
+
 export type Task = {
   id: string
   title: string
@@ -10,6 +17,7 @@ export type Task = {
   status: TaskStatus
   completedAt: string | null
   sortOrder: number
+  listId: string | null
   createdAt: string
   updatedAt: string
 }

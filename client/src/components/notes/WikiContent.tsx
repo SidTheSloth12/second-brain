@@ -46,5 +46,5 @@ export function WikiContent({ content, notesIndex }: Props) {
   if (last < content.length) {
     parts.push(<span key={`t-${last}`}>{content.slice(last)}</span>)
   }
-  return <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{parts}</div>
+  return <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">{parts}</div>
 }

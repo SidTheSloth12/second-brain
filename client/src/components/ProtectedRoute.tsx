@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { MinimalSpinner } from './Loaders'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, ready } = useAuth()
@@ -8,8 +9,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Loading…</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <MinimalSpinner />
       </div>
     )
   }

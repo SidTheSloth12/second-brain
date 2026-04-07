@@ -9,4 +9,5 @@ export type NoteListItem = {
 export type NoteDetail = NoteListItem & {
   content: string
   createdAt: string
+  tags: string[]
 }

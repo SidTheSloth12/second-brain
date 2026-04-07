@@ -42,13 +42,17 @@ router.post('/register', async (req, res) => {
       user: { id: user.id, email: user.email, createdAt: user.created_at.toISOString() },
     })
   } catch (err: unknown) {
-    const code = typeof err === 'object' && err && 'code' in err ? (err as { code: string }).code : ''
+    console.error('Registration error:', err)
+    const code =
+      typeof err === 'object' && err && 'code' in err ? (err as { code: string }).code : ''
     if (code === '23505') {
       res.status(409).json({ error: 'An account with this email already exists' })
       return
     }
-    console.error(err)
-    res.status(500).json({ error: 'Could not create account' })
+    res.status(500).json({
+      error: 'Could not create account',
+      details: err instanceof Error ? err.message : String(err),
+    })
   }
 })
 
@@ -88,8 +92,11 @@ router.post('/login', async (req, res) => {
       },
     })
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Could not sign in' })
+    console.error('Login error:', err)
+    res.status(500).json({
+      error: 'Could not sign in',
+      details: err instanceof Error ? err.message : String(err),
+    })
   }
 })
 

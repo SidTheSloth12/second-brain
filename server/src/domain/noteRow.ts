@@ -29,7 +29,7 @@ export function noteRowToListItem(row: NoteSummaryRow) {
   }
 }
 
-export function noteRowToDetail(row: NoteRow) {
+export function noteRowToDetail(row: NoteRow & { tags?: string[] }) {
   return {
     id: row.id,
     title: row.title,
@@ -38,5 +38,6 @@ export function noteRowToDetail(row: NoteRow) {
     folderId: row.folder_id,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
+    tags: row.tags ?? [],
   }
 }

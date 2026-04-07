@@ -16,19 +16,24 @@ export async function fetchGraph(): Promise<{ nodes: { id: string; title: string
   return data
 }
 
+export async function fetchTags(): Promise<string[]> {
+  const { data } = await api.get<{ tags: { name: string }[] }>('/api/notes/tags')
+  return data.tags.map((tag) => tag.name)
+}
+
 export async function fetchNoteBacklinks(id: string): Promise<NoteListItem[]> {
   const { data } = await api.get<{ notes: NoteListItem[] }>(`/api/notes/${id}/backlinks`)
   return data.notes
 }
 
-export async function createNote(body: { title: string; content?: string, folderId?: string | null }): Promise<NoteDetail> {
+export async function createNote(body: { title: string; content?: string; folderId?: string | null; tags?: string[] }): Promise<NoteDetail> {
   const { data } = await api.post<{ note: NoteDetail }>('/api/notes', body)
   return data.note
 }
 
 export async function updateNote(
   id: string,
-  body: Partial<{ title: string; content: string, folderId: string | null }>
+  body: Partial<{ title: string; content: string; folderId: string | null; tags: string[] }>
 ): Promise<NoteDetail> {
   const { data } = await api.patch<{ note: NoteDetail }>(`/api/notes/${id}`, body)
   return data.note

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { AppShell } from '../components/AppShell'
 import { TipTapJournalEditor } from '../components/journal/TipTapJournalEditor'
 import {
   deleteJournalEntry,
@@ -115,7 +114,7 @@ function JournalEntryEditor({
         onChange={(e) => setTitle(e.target.value)}
         onBlur={() => flushTitle()}
         placeholder="Title (optional)"
-        className="w-full rounded-t-lg border border-b-0 border-slate-200 bg-white px-3 py-2 text-lg font-semibold text-slate-900 placeholder:text-slate-400 focus:z-10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500/25"
+        className="w-full rounded-t-lg border border-b-0 border-slate-200 bg-white px-3 py-2 text-lg font-semibold text-slate-900 placeholder:text-slate-400 focus:z-10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
       <TipTapJournalEditor
         key={`${date}-${editorEpoch}`}
@@ -156,11 +155,11 @@ export function JournalPage() {
   }
 
   return (
-    <AppShell wide>
+    <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <aside className="w-full shrink-0 lg:w-56">
           <div className="flex flex-col gap-1">
-            <label htmlFor="journal-date" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <label htmlFor="journal-date" className="text-xs font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">
               Selected Date
             </label>
             <input
@@ -172,21 +171,21 @@ export function JournalPage() {
                   navigate(`/journal/${e.target.value}`)
                 }
               }}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 hover:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
-          <p className="mt-2 text-xs text-slate-500">Days with entries</p>
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Days with entries</p>
           <nav className="mt-2 max-h-64 space-y-0.5 overflow-y-auto lg:max-h-[calc(100vh-12rem)]">
-            {monthLoading && <p className="text-xs text-slate-400">Loading…</p>}
+            {monthLoading && <p className="text-xs text-slate-400 dark:text-slate-500">Loading…</p>}
             {!monthLoading && entries.length === 0 && (
-              <p className="text-xs text-slate-400">No entries this month.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">No entries this month.</p>
             )}
             {entries.map((e) => (
               <Link
                 key={e.id}
                 to={`/journal/${e.entryDate}`}
                 className={`block truncate rounded-md px-2 py-1.5 text-sm ${
-                  e.entryDate === date ? 'bg-violet-100 font-medium text-violet-900' : 'text-slate-700 hover:bg-slate-100'
+                  e.entryDate === date ? 'bg-violet-100 font-medium text-violet-900 dark:bg-violet-900/40 dark:text-violet-200' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`}
               >
                 {e.entryDate}
@@ -203,11 +202,11 @@ export function JournalPage() {
         </aside>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-slate-900">Journal</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Journal</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             One entry per calendar day. Rich text auto-saves a few seconds after you stop typing.
           </p>
-          <p className="mt-2 text-sm font-medium text-slate-700">{date}</p>
+          <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{date}</p>
 
           {entryPending ? (
             <div className="mt-6 min-h-[20rem] animate-pulse rounded-xl bg-slate-100" />
@@ -224,6 +223,6 @@ export function JournalPage() {
           )}
         </div>
       </div>
-    </AppShell>
+    </div>
   )
 }

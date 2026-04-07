@@ -1,5 +1,5 @@
 import { Router, type Request } from 'express'
-import type { PoolClient } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import {
   noteRowToDetail,
   noteRowToListItem,
@@ -69,6 +69,102 @@ async function syncNoteLinks(client: PoolClient, userId: string, fromNoteId: str
   }
 }
 
+type NoteRowWithTags = NoteRow & { tags: string[] }
+
+function isMissingRelationError(err: unknown) {
+  const message = typeof err === 'object' && err !== null ? (err as any).message : ''
+  return (
+    typeof message === 'string' &&
+    (message.includes('relation "note_tags" does not exist') ||
+      message.includes('relation "tags" does not exist') ||
+      message.includes('relation "notes" does not exist'))
+  )
+}
+
+function normalizeTagName(name: string) {
+  return name.trim()
+}
+
+async function syncNoteTags(client: PoolClient, userId: string, noteId: string, tags: readonly string[]) {
+  const cleaned = tags.map(normalizeTagName).filter((tag) => tag.length > 0)
+  const uniqueTags = Array.from(new Set(cleaned.map((tag) => tag.toLowerCase()))).map(
+    (lower) => cleaned.find((tag) => tag.toLowerCase() === lower) as string
+  )
+
+  try {
+    await client.query(`DELETE FROM note_tags WHERE note_id = $1`, [noteId])
+
+    for (const name of uniqueTags) {
+      const normalizedName = name.toLowerCase()
+      const tagResult = await client.query<{ id: string }>(
+        `INSERT INTO tags (user_id, name, normalized_name)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, normalized_name) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id`,
+        [userId, name, normalizedName]
+      )
+      await client.query(
+        `INSERT INTO note_tags (note_id, tag_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [noteId, tagResult.rows[0].id]
+      )
+    }
+  } catch (err) {
+    if (isMissingRelationError(err)) return
+    throw err
+  }
+}
+
+async function fetchNoteDetail(client: Pool | PoolClient, userId: string, id: string): Promise<NoteRowWithTags | null> {
+  try {
+    const result = await client.query<NoteRowWithTags>(
+      `SELECT n.id,
+              n.user_id,
+              n.title,
+              n.slug,
+              n.content,
+              n.folder_id,
+              n.created_at,
+              n.updated_at,
+              COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.id IS NOT NULL), ARRAY[]::text[]) AS tags
+         FROM notes n
+         LEFT JOIN note_tags nt ON n.id = nt.note_id
+         LEFT JOIN tags t ON nt.tag_id = t.id
+         WHERE n.user_id = $1 AND n.id = $2
+         GROUP BY n.id`,
+      [userId, id]
+    )
+    return result.rows[0] ?? null
+  } catch (err) {
+    if (isMissingRelationError(err)) {
+      const result = await client.query<NoteRow>(
+        `SELECT id, user_id, title, slug, content, folder_id, created_at, updated_at
+         FROM notes
+         WHERE user_id = $1 AND id = $2`,
+        [userId, id]
+      )
+      if (result.rowCount === 0) return null
+      return { ...result.rows[0], tags: [] }
+    }
+    throw err
+  }
+}
+
+router.get('/tags', async (req, res) => {
+  const userId = userIdFrom(req)
+  try {
+    const result = await pool.query<{ id: string; name: string }>(
+      `SELECT id, name FROM tags WHERE user_id = $1 ORDER BY lower(name)`,
+      [userId]
+    )
+    res.json({ tags: result.rows })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Could not load tags' })
+  }
+})
+
 router.get('/', async (req, res) => {
   const userId = userIdFrom(req)
   try {
@@ -126,16 +222,12 @@ router.get('/:id', async (req, res) => {
   const userId = userIdFrom(req)
   const id = req.params.id
   try {
-    const result = await pool.query<NoteRow>(
-      `SELECT id, user_id, title, slug, content, folder_id, created_at, updated_at
-       FROM notes WHERE user_id = $1 AND id = $2`,
-      [userId, id]
-    )
-    if (result.rowCount === 0) {
+    const note = await fetchNoteDetail(pool, userId, id)
+    if (!note) {
       res.status(404).json({ error: 'Note not found' })
       return
     }
-    res.json({ note: noteRowToDetail(result.rows[0]) })
+    res.json({ note: noteRowToDetail(note) })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Could not load note' })
@@ -151,6 +243,7 @@ router.post('/', async (req, res) => {
   }
   const content = typeof req.body?.content === 'string' ? req.body.content : ''
   const folderId = typeof req.body?.folderId === 'string' ? req.body.folderId : null
+  const tags = Array.isArray(req.body?.tags) ? req.body.tags.map(String) : []
 
   const client = await pool.connect()
   try {
@@ -164,8 +257,12 @@ router.post('/', async (req, res) => {
     )
     const row = ins.rows[0]
     await syncNoteLinks(client, userId, row.id, content)
+    if (tags.length > 0) {
+      await syncNoteTags(client, userId, row.id, tags)
+    }
+    const detail = await fetchNoteDetail(client, userId, row.id)
     await client.query('COMMIT')
-    res.status(201).json({ note: noteRowToDetail(row) })
+    res.status(201).json({ note: noteRowToDetail(detail as NoteRowWithTags) })
   } catch (err) {
     await client.query('ROLLBACK')
     console.error(err)
@@ -184,6 +281,7 @@ router.patch('/:id', async (req, res) => {
   let i = 1
   let newTitle: string | undefined
   let newContent: string | undefined
+  let newTags: string[] | undefined
 
   if (req.body?.title !== undefined) {
     if (typeof req.body.title !== 'string' || !req.body.title.trim()) {
@@ -208,8 +306,15 @@ router.patch('/:id', async (req, res) => {
     updates.push(`folder_id = $${i++}`)
     values.push(folderId)
   }
+  if (req.body?.tags !== undefined) {
+    if (!Array.isArray(req.body.tags)) {
+      res.status(400).json({ error: 'tags must be an array' })
+      return
+    }
+    newTags = req.body.tags.map(String)
+  }
 
-  if (updates.length === 0) {
+  if (updates.length === 0 && newTags === undefined) {
     res.status(400).json({ error: 'No valid fields to update' })
     return
   }
@@ -237,22 +342,31 @@ router.patch('/:id', async (req, res) => {
       values.push(newSlug)
     }
 
-    updates.push(`updated_at = NOW()`)
-    const userParam = i
-    const idParam = i + 1
-    values.push(userId, id)
+    let updated: NoteRow
+    if (updates.length > 0) {
+      updates.push(`updated_at = NOW()`)
+      const userParam = i
+      const idParam = i + 1
+      values.push(userId, id)
 
-    const result = await client.query<NoteRow>(
-      `UPDATE notes SET ${updates.join(', ')}
-       WHERE user_id = $${userParam} AND id = $${idParam}
-       RETURNING id, user_id, title, slug, content, folder_id, created_at, updated_at`,
-      values
-    )
+      const result = await client.query<NoteRow>(
+        `UPDATE notes SET ${updates.join(', ')}
+         WHERE user_id = $${userParam} AND id = $${idParam}
+         RETURNING id, user_id, title, slug, content, folder_id, created_at, updated_at`,
+        values
+      )
+      updated = result.rows[0]
+    } else {
+      updated = row
+    }
 
-    const updated = result.rows[0]
     await syncNoteLinks(client, userId, updated.id, updated.content)
+    if (newTags !== undefined) {
+      await syncNoteTags(client, userId, updated.id, newTags)
+    }
+    const detail = await fetchNoteDetail(client, userId, updated.id)
     await client.query('COMMIT')
-    res.json({ note: noteRowToDetail(updated) })
+    res.json({ note: noteRowToDetail(detail as NoteRowWithTags) })
   } catch (err) {
     await client.query('ROLLBACK')
     console.error(err)

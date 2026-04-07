@@ -27,7 +27,7 @@ export function TipTapJournalEditor({ initialHtml, onDebouncedChange }: Props) {
     editorProps: {
       attributes: {
         class:
-          'tiptap-journal max-w-none min-h-[16rem] rounded-b-lg border border-t-0 border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500/25 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic',
+          'tiptap-journal max-w-none min-h-[16rem] rounded-b-lg border border-t-0 border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic dark:[&_blockquote]:border-slate-600',
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -47,7 +47,7 @@ export function TipTapJournalEditor({ initialHtml, onDebouncedChange }: Props) {
   }, [])
 
   if (!editor) {
-    return <div className="min-h-[16rem] animate-pulse rounded-b-lg border border-t-0 border-slate-200 bg-slate-50" />
+    return <div className="min-h-[16rem] animate-pulse rounded-b-lg border border-t-0 border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50" />
   }
 
   return <EditorContent editor={editor} />
