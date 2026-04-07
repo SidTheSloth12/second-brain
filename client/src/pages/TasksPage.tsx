@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { MinimalSpinner } from '../components/Loaders'
 import { groupTasksForDisplay } from '../lib/taskGroups'
 import {
   createTask,
@@ -47,7 +46,7 @@ function priorityBadge(p: TaskPriority) {
 }
 
 const inputCls =
-  'w-full text-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-400'
+  'w-full text-sm rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500/50'
 
 export function TasksPage() {
   const queryClient = useQueryClient()
@@ -347,17 +346,18 @@ export function TasksPage() {
                 </button>
               </div>
               
-              <div className="mt-2 flex flex-wrap gap-3 pl-12 pr-4 pb-1">
+              <div className="mt-2 flex flex-wrap gap-2 pl-12 pr-4 pb-1">
                 <input
                   type="datetime-local"
                   value={newDue}
                   onChange={(e) => setNewDue(e.target.value)}
-                  className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 transition-colors focus:border-violet-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:focus:bg-slate-800"
+                  className="cursor-pointer appearance-none rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-100 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:focus:border-violet-500/50"
                 />
                 <select
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value as TaskPriority)}
-                  className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors focus:border-violet-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:focus:bg-slate-800"
+                  className="cursor-pointer appearance-none rounded-xl border border-slate-200/80 bg-slate-50 py-2 pl-3 pr-8 text-xs font-medium text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-100 focus:border-violet-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:focus:border-violet-500/50"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
                 >
                   <option value="low">Low Priority</option>
                   <option value="medium">Medium Priority</option>
@@ -367,7 +367,7 @@ export function TasksPage() {
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Description (optional)"
-                  className="min-w-[150px] flex-1 rounded-lg border border-transparent bg-slate-50/50 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100 focus:border-violet-500 focus:bg-slate-50 focus:outline-none dark:bg-slate-800/30 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:focus:bg-slate-800"
+                  className="min-w-[150px] flex-1 rounded-xl border border-transparent bg-slate-50/50 px-3 py-2 text-xs text-slate-600 transition-all hover:bg-slate-100 focus:border-violet-500 focus:bg-slate-50 focus:outline-none dark:bg-slate-800/30 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:focus:bg-slate-800"
                 />
               </div>
             </form>
@@ -545,7 +545,8 @@ function EditTaskForm({
           id="edit-priority"
           value={priority}
           onChange={(e) => setPriority(e.target.value as TaskPriority)}
-          className={`mt-1.5 ${inputCls}`}
+          className={`mt-1.5 cursor-pointer appearance-none ${inputCls}`}
+          style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.75rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
         >
           <option value="low">Low Priority</option>
           <option value="medium">Medium Priority</option>

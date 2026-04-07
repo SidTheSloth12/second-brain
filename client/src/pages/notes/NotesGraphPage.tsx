@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { fetchGraph } from '../../lib/notesApi'
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MinimalSpinner } from '../../components/Loaders'
 
 // Detect theme from <html> class
@@ -21,6 +21,15 @@ export function NotesGraphPage() {
     queryKey: ['notes-graph'],
     queryFn: fetchGraph,
   })
+
+  // Dummy node to absorb the index 0 "#000000" hit canvas mapping bug native to ForceGraph
+  const graphData = useMemo(() => {
+    if (!data) return undefined
+    return {
+      nodes: [{ id: '__dummy_hit_fix_node__', title: '' }, ...data.nodes],
+      links: data.links,
+    }
+  }, [data])
 
   // Sync dark mode
   useEffect(() => {
@@ -67,6 +76,8 @@ export function NotesGraphPage() {
   // Custom node renderer — draws a circle + permanent label below
   const nodeCanvasObject = useCallback(
     (node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      if (node.id === '__dummy_hit_fix_node__') return
+
       const radius = 6
       const x = node.x ?? 0
       const y = node.y ?? 0
@@ -109,18 +120,35 @@ export function NotesGraphPage() {
     [nodeFill, nodeStroke, labelBg, labelColor]
   )
 
-  // Make the node easily clickable by returning a perfectly centered hit area
+  // Precisely outline the hit area to prevent massive overlapping bounds from swallowing nearby nodes
   const nodePointerAreaPaint = useCallback(
-    (node: any, color: string, ctx: CanvasRenderingContext2D) => {
+    (node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      if (node.id === '__dummy_hit_fix_node__') return
+
       const radius = 6
       const x = node.x ?? 0
       const y = node.y ?? 0
 
-      // Perfectly center the hit area over the node's physical coordinate
-      ctx.beginPath()
-      ctx.arc(x, y, radius + 10, 0, 2 * Math.PI)
       ctx.fillStyle = color
+
+      // 1. Paint hit area for the node circle
+      ctx.beginPath()
+      ctx.arc(x, y, radius + 2, 0, 2 * Math.PI)
       ctx.fill()
+
+      // 2. Paint hit area for the label
+      const label = node.title || 'Untitled'
+      const fontSize = Math.max(8, 11 / globalScale)
+      ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
+      const textWidth = ctx.measureText(label).width
+      const padX = 4 / globalScale
+      const padY = 3 / globalScale
+      const labelY = y + radius + 4 / globalScale
+      
+      const bgW = textWidth + padX * 2
+      const bgH = fontSize + padY * 2
+      
+      ctx.fillRect(x - bgW / 2, labelY - padY, bgW, bgH)
     },
     []
   )
@@ -133,7 +161,7 @@ export function NotesGraphPage() {
     )
   }
 
-  if (isError || !data) {
+  if (isError || !data || !graphData) {
     return (
       <div className="flex h-full items-center justify-center text-red-500">
         Failed to load graph data.
@@ -141,7 +169,7 @@ export function NotesGraphPage() {
     )
   }
 
-  const isEmpty = data.nodes.length === 0
+  const isEmpty = graphData.nodes.length <= 1
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
@@ -151,7 +179,7 @@ export function NotesGraphPage() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {isEmpty
             ? 'Create some notes with [[wiki-links]] to see connections.'
-            : `${data.nodes.length} notes · ${data.links.length} connections — click a node to open the note`}
+            : `${graphData.nodes.length - 1} notes · ${graphData.links.length} connections — click a node to open the note`}
         </p>
       </div>
 
@@ -171,7 +199,7 @@ export function NotesGraphPage() {
             width={dimensions.width}
             height={dimensions.height}
             backgroundColor={bgColor}
-            graphData={data}
+            graphData={graphData}
             // Hide built-in label (we draw our own)
             nodeLabel={() => ''}
             nodeAutoColorBy={undefined}
