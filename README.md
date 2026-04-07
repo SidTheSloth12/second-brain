@@ -6,7 +6,7 @@ A personal knowledge management web app inspired by Obsidian. Built to capture n
 
 ## The Goal
 
-The basic idea: one place for everything: notes, tasks, journal, calendar. Wired together so your thinking actually connects. No more switching between five apps and losing the thread. No more tutorial projects that never ship. Real, usable and most importantly, *yours*.
+The basic idea: one place for everything: notes, tasks, journal, calendar. Wired together so your thinking actually connects. Eliminates the need to switch between five apps. Real, usable and most importantly, *yours*.
 
 ---
 
