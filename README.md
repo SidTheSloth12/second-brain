@@ -49,12 +49,6 @@ The basic idea: one place for everything: notes, tasks, journal, calendar. Wired
 | JWT | Authentication tokens |
 | bcryptjs | Password hashing |
 
-### Deployment
-| Where | What |
-|---|---|
-| Vercel | Frontend |
-| Railway | Backend |
-
 ---
 
 ## Architecture
@@ -133,7 +127,7 @@ Start the client:
 npm run dev
 ```
 
-App is live at **http://localhost:5173**. Go forth and organise your thoughts.
+App is live at **http://localhost:5173**. 
 
 ---
 
