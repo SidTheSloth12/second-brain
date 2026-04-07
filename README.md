@@ -200,7 +200,8 @@ All routes are prefixed with `/api` and require a `Bearer` JWT token — except 
 I miss things if I don't write them down, and I got tired of my notes living in one app, my tasks in another, and my calendar somewhere else entirely. Yes, Google has done the integration thing already, and done it well. What I've built is essentially a budget version of that, except with linked notes and a graph view, which Google doesn't have.
 The Obsidian-style notes, folder structure, and graph view are how I (try to) organize my thoughts and ideas. I think about a lot of things. They need a map. The calendar and tasks just keep my life running smoothly enough that I have time to do that.
 
+Regarding the "Snippets Of Wisdom" section, it was made out of pure boredom. Dialogues I've come across from TV shows, books, or movies. 
 
 ---
 
-*I might add a habit tracker to this in the future*
+*I might add a habit tracker feature in the near future*.
