@@ -1,6 +1,6 @@
 # Second Brain
 
-A personal knowledge management web app inspired by Obsidian. Built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface. Also built as a genuine learning project, which means this README doubles as a small monument to stubbornness :)
+A personal knowledge management web app inspired by Obsidian. Built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface.
 
 ---
 
