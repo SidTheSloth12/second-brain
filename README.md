@@ -1,6 +1,6 @@
 # Second Brain
 
-A personal knowledge management web app inspired by Obsidian — built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface. Also built as a genuine learning project, which means this README doubles as a small monument to stubbornness :)
+A personal knowledge management web app inspired by Obsidian. Built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface. Also built as a genuine learning project, which means this README doubles as a small monument to stubbornness :)
 
 ---
 
@@ -59,9 +59,9 @@ The basic idea: one place for everything: notes, tasks, journal, calendar. Wired
 
 ## Architecture
 
-Standard client-server setup. The frontend handles all UI and interaction, talking to a REST API backend that manages business logic and data. PostgreSQL stores everything — notes, tasks, events, journal entries — with a dedicated `note_links` table tracking connections between notes for the graph view.
+Standard client-server setup. The frontend handles all UI and interaction, talking to a REST API backend that manages business logic and data. PostgreSQL stores all the notes, tasks, events, journal entries with a dedicated `note_links` table tracking connections between notes for the graph view.
 
-Authentication runs through JWT tokens. The graph view queries note relationships from the database and renders them as an interactive force-directed graph on the frontend. The whole thing actually talks to itself like it's supposed to.
+Authentication runs through JWT tokens. The graph view queries note relationships from the database and renders them as an interactive force directed graph on the frontend. The whole thing actually talks to itself like it's supposed to.
 
 ---
 
