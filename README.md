@@ -49,6 +49,13 @@ The basic idea: one place for everything: notes, tasks, journal, calendar. Wired
 | JWT | Authentication tokens |
 | bcryptjs | Password hashing |
 
+### Deployment
+| Component | Platform | Purpose |
+|---|---|---|
+| Frontend | [Vercel](https://vercel.com/) | Fast Vite static hosting & CDN |
+| Backend | [Render](https://render.com/) | Node.js Express API Web Service |
+| Database | [Supabase](https://supabase.com/) | Managed PostgreSQL database & pooler |
+
 ---
 
 ## Architecture
