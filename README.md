@@ -204,5 +204,5 @@ The Obsidian-style notes, folder structure, and graph view are how I (try to) or
 Regarding the "Lines" section, it was made out of pure boredom. Lines I've come across from TV shows, books, movies, or the Internet. There's some real poetic beauty in there :)
 
 ---
-
+The graph feature has a few bugs, is being worked on right now.
 *I might add a habit tracker feature in the near future*.
