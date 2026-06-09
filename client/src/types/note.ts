@@ -1,13 +1,12 @@
 export type NoteListItem = {
-  id: string
-  title: string
-  slug: string
-  folderId: string | null
-  updatedAt: string
+ id: string
+ title: string
+ slug: string
+ folderId: string | null
+ updatedAt: string
 }
-
 export type NoteDetail = NoteListItem & {
-  content: string
-  createdAt: string
-  tags: string[]
+ content: string
+ createdAt: string
+ tags: string[]
 }

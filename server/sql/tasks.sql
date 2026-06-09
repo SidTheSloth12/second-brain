@@ -1,5 +1,4 @@
 -- Run in Supabase SQL Editor if you already applied init.sql without tasks.
-
 CREATE TABLE IF NOT EXISTS task_lists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -9,7 +8,6 @@ CREATE TABLE IF NOT EXISTS task_lists (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT task_lists_user_name_unique UNIQUE (user_id, lower(name))
 );
-
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -24,7 +22,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_tasks_user_list ON tasks (user_id, task_list_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_due ON tasks (user_id, due_at) WHERE status = 'open';
 CREATE INDEX IF NOT EXISTS idx_tasks_user_status ON tasks (user_id, status);
