@@ -6,7 +6,14 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { ThemeProvider } from './context/ThemeContext.tsx'
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes cache to prevent redundant fetching
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 createRoot(document.getElementById('root')!).render(
  <StrictMode>
  <QueryClientProvider client = {queryClient}>

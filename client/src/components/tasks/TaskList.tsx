@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import type { Task, TaskPriority } from '../../types/task'
 import { groupTasksForDisplay } from '../../lib/taskGroups'
+import { Pencil, Trash2 } from 'lucide-react'
 
 function formatDue(iso: string | null): string {
   if (!iso) return ''
@@ -72,24 +73,22 @@ const TaskItem = React.memo(({
             </p>
           )}
         </div>
-        <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 sm:flex-col">
+        <div className="flex shrink-0 gap-2 opacity-0 transition-opacity group-hover:opacity-100 sm:flex-col">
           <button
             type="button"
             onClick={() => onEdit(task)}
-            className="rounded-lg p-2 text-slate-400 transition-all hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 dark:hover:text-violet-400"
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/20 dark:hover:text-violet-400"
             title="Edit task"
           >
-            ✏️
+            <Pencil className="h-4 w-4" />
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (confirm('Delete this task?')) onDelete(task.id)
-            }}
-            className="rounded-lg p-2 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400"
+            onClick={() => onDelete(task.id)}
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400"
             title="Delete task"
           >
-            ✕
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>

@@ -1,0 +1,230 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+model User {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String          @unique
+  password_hash String
+  created_at    DateTime        @default(now()) @db.Timestamptz
+  task_lists    TaskList[]
+  tasks         Task[]
+  events        Event[]
+  folders       Folder[]
+  notes         Note[]
+  note_links    NoteLink[]
+  tags          Tag[]
+  journal       JournalEntry[]
+  habits        Habit[]
+  attachments   Attachment[]
+
+  @@map("users")
+}
+
+model TaskList {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  name       String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+
+  user  User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([user_id, name], name: "task_lists_user_name_unique")
+  @@map("task_lists")
+}
+
+model Task {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  task_list_id String?   @db.Uuid
+  title        String
+  description  String?
+  due_at       DateTime? @db.Timestamptz
+  priority     String    @default("low")
+  status       String    @default("open")
+  completed_at DateTime? @db.Timestamptz
+  sort_order   Int       @default(0)
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  updated_at   DateTime  @default(now()) @db.Timestamptz
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  task_list TaskList? @relation(fields: [task_list_id], references: [id], onDelete: SetNull)
+  attachments Attachment[]
+
+  @@index([user_id, task_list_id])
+  @@index([user_id, status])
+  @@index([user_id, due_at])
+  @@map("tasks")
+}
+
+model Event {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  title       String
+  description String?
+  starts_at   DateTime @db.Timestamptz
+  ends_at     DateTime @db.Timestamptz
+  all_day     Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz
+  updated_at  DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, starts_at])
+  @@index([user_id, starts_at, ends_at])
+  @@map("events")
+}
+
+model Folder {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  parent_id  String?  @db.Uuid
+  name       String
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  parent   Folder?  @relation("FolderToFolder", fields: [parent_id], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderToFolder")
+  notes    Note[]
+
+  @@index([user_id])
+  @@map("folders")
+}
+
+model Note {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String
+  slug       String
+  content    String   @default("")
+  folder_id  String?  @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  folder        Folder?    @relation(fields: [folder_id], references: [id], onDelete: Cascade)
+  links_from    NoteLink[] @relation("NoteLinkFrom")
+  links_to      NoteLink[] @relation("NoteLinkTo")
+  note_tags     NoteTag[]
+  attachments   Attachment[]
+
+  @@unique([user_id, slug])
+  @@index([user_id, updated_at(sort: Desc)])
+  @@map("notes")
+}
+
+model NoteLink {
+  from_note_id String @db.Uuid
+  to_note_id   String @db.Uuid
+  user_id      String @db.Uuid
+
+  from_note Note @relation("NoteLinkFrom", fields: [from_note_id], references: [id], onDelete: Cascade)
+  to_note   Note @relation("NoteLinkTo", fields: [to_note_id], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([from_note_id, to_note_id])
+  @@index([to_note_id])
+  @@index([user_id])
+  @@map("note_links")
+}
+
+model Tag {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String   @db.Uuid
+  name            String
+  normalized_name String
+  created_at      DateTime @default(now()) @db.Timestamptz
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  note_tags NoteTag[]
+
+  @@unique([user_id, normalized_name])
+  @@map("tags")
+}
+
+model NoteTag {
+  note_id String @db.Uuid
+  tag_id  String @db.Uuid
+
+  note Note @relation(fields: [note_id], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@id([note_id, tag_id])
+  @@index([note_id])
+  @@index([tag_id])
+  @@map("note_tags")
+}
+
+model JournalEntry {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  entry_date DateTime @db.Date
+  title      String   @default("")
+  body_html  String   @default("")
+  body_text  String   @default("")
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, entry_date])
+  @@index([user_id, entry_date(sort: Desc)])
+  @@map("journal_entries")
+}
+
+model Habit {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String     @db.Uuid
+  name       String
+  frequency  String     @default("daily")
+  created_at DateTime   @default(now()) @db.Timestamptz
+
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  logs       HabitLog[]
+
+  @@index([user_id])
+  @@map("habits")
+}
+
+model HabitLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  habit_id   String   @db.Uuid
+  date       DateTime @db.Date
+  completed  Boolean  @default(true)
+
+  habit      Habit    @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+
+  @@unique([habit_id, date])
+  @@map("habit_logs")
+}
+
+model Attachment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  note_id    String?  @db.Uuid
+  task_id    String?  @db.Uuid
+  filename   String
+  filepath   String
+  mime_type  String
+  size       Int
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  note       Note?    @relation(fields: [note_id], references: [id], onDelete: Cascade)
+  task       Task?    @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([note_id])
+  @@index([task_id])
+  @@map("attachments")
+}
+

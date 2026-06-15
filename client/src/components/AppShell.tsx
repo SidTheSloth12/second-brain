@@ -51,14 +51,15 @@ export function AppHeader({
  <NavLink to = "/" className = "text-lg font-semibold text-violet-700 hover:text-violet-800 dark:text-violet-300 dark:hover:text-violet-100">
  Second Brain
  </NavLink>
- <nav className = "flex flex-wrap gap-1">
- <NavLink to = "/" end className = {navClass}>Home</NavLink>
- <NavLink to = "/tasks" className = {navClass}>Tasks</NavLink>
- <NavLink to = "/calendar" className = {navClass}>Calendar</NavLink>
- <NavLink to = "/notes" className = {navClass}>Notes</NavLink>
- <NavLink to = "/journal" className = {navClass}>Journal</NavLink>
- <NavLink to = "/search" className = {navClass}>Search</NavLink>
- </nav>
+          <nav className="flex flex-wrap gap-1">
+            <NavLink to="/" end className={navClass}>Home</NavLink>
+            <NavLink to="/tasks" className={navClass}>Tasks</NavLink>
+            <NavLink to="/habits" className={navClass}>Habits</NavLink>
+            <NavLink to="/calendar" className={navClass}>Calendar</NavLink>
+            <NavLink to="/notes" className={navClass}>Notes</NavLink>
+            <NavLink to="/journal" className={navClass}>Journal</NavLink>
+            <NavLink to="/search" className={navClass}>Search</NavLink>
+          </nav>
  </div>
  <div className = "flex flex-wrap items-center gap-3">
  <ThemeToggle />

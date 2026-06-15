@@ -4,18 +4,34 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { AppHeader } from './components/AppShell'
 import { useAuth } from './auth/useAuth'
 import { Analytics } from '@vercel/analytics/react'
-import { HomePage } from './pages/HomePage'
-import { CalendarPage } from './pages/CalendarPage'
-import { JournalPage, JournalTodayRedirect } from './pages/JournalPage'
-import { SearchPage } from './pages/SearchPage'
-import { NoteEditPage } from './pages/notes/NoteEditPage'
-import { NoteNewPage } from './pages/notes/NoteNewPage'
-import { NotesIndexPage } from './pages/notes/NotesIndexPage'
-import { NotesGraphPage } from './pages/notes/NotesGraphPage'
-import { NotesLayout } from './pages/notes/NotesLayout'
-import { TasksPage } from './pages/TasksPage'
-import { LoginPage } from './pages/LoginPage'
-import { RegisterPage } from './pages/RegisterPage'
+
+import { lazy, Suspense } from 'react'
+
+const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })))
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
+const JournalPage = lazy(() => import('./pages/JournalPage').then((m) => ({ default: m.JournalPage })))
+const JournalTodayRedirect = lazy(() => import('./pages/JournalPage').then((m) => ({ default: m.JournalTodayRedirect })))
+const SearchPage = lazy(() => import('./pages/SearchPage').then((m) => ({ default: m.SearchPage })))
+const NoteEditPage = lazy(() => import('./pages/notes/NoteEditPage').then((m) => ({ default: m.NoteEditPage })))
+const NoteNewPage = lazy(() => import('./pages/notes/NoteNewPage').then((m) => ({ default: m.NoteNewPage })))
+const NotesIndexPage = lazy(() => import('./pages/notes/NotesIndexPage').then((m) => ({ default: m.NotesIndexPage })))
+const NotesGraphPage = lazy(() => import('./pages/notes/NotesGraphPage').then((m) => ({ default: m.NotesGraphPage })))
+const NotesLayout = lazy(() => import('./pages/notes/NotesLayout').then((m) => ({ default: m.NotesLayout })))
+const TasksPage = lazy(() => import('./pages/TasksPage').then((m) => ({ default: m.TasksPage })))
+const HabitsPage = lazy(() => import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
+
+import { MinimalSpinner } from './components/Loaders'
+
+function SuspenseFallback() {
+    return (
+        <div className="flex h-full min-h-[50vh] items-center justify-center">
+            <MinimalSpinner />
+        </div>
+    )
+}
+
 /**
  * Wraps page content in a fade+slide animation.
  * Only the content below the header animates — the header itself stays put.
@@ -29,10 +45,13 @@ function PageTransition({ children }: { children: React.ReactNode }) {
             transition={{ duration: 0.22, ease: 'easeOut' }}
             className="w-full"
         >
-            {children}
+            <Suspense fallback={<SuspenseFallback />}>
+                {children}
+            </Suspense>
         </motion.div>
     )
 }
+
 /**
  * The persistent root layout: renders the header once (never unmounts),
  * then renders routed page content underneath with transitions.
@@ -40,13 +59,16 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 function RootLayout() {
     const { user, logout } = useAuth()
     const location = useLocation()
+
     // On login/register pages, don't show the app header
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
             {!isAuthPage && user && (
                 <AppHeader user={user} onLogout={logout} />
             )}
+
             <AnimatePresence mode="wait" initial={false}>
                 <Routes location={location} key={location.pathname}>
                     <Route
@@ -65,6 +87,16 @@ function RootLayout() {
                             <ProtectedRoute>
                                 <PageTransition>
                                     <TasksPage />
+                                </PageTransition>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/habits"
+                        element={
+                            <ProtectedRoute>
+                                <PageTransition>
+                                    <HabitsPage />
                                 </PageTransition>
                             </ProtectedRoute>
                         }
@@ -124,6 +156,7 @@ function RootLayout() {
                             </ProtectedRoute>
                         }
                     />
+
                     <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
                     <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
@@ -132,6 +165,7 @@ function RootLayout() {
         </div>
     )
 }
+
 export default function App() {
     return (
         <>

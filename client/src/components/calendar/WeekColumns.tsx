@@ -3,13 +3,14 @@ import type { CalendarEvent } from '../../types/calendar'
 import type { Task } from '../../types/task'
 import { getWeekDays, isSameDay, itemsForDay, startOfDay } from '../../lib/calendarTime'
 type Props = {
- anchor: Date
- tasks: Task[]
- events: CalendarEvent[]
- onSelectDay: (day: Date) => void
- onEditEvent: (event: CalendarEvent) => void
+  anchor: Date
+  tasks: Task[]
+  events: CalendarEvent[]
+  onSelectDay: (day: Date) => void
+  onEditEvent: (event: CalendarEvent) => void
+  onEditTask?: (task: Task) => void
 }
-export function WeekColumns({ anchor, tasks, events, onSelectDay, onEditEvent }: Props) {
+export function WeekColumns({ anchor, tasks, events, onSelectDay, onEditEvent, onEditTask }: Props) {
  const days = getWeekDays(anchor)
  return (
  <div className = "grid grid-cols-1 gap-3 sm:grid-cols-7">
@@ -43,21 +44,24 @@ export function WeekColumns({ anchor, tasks, events, onSelectDay, onEditEvent }:
  )}
  {items.map((item) =>
  item.kind === 'task' ? (
- <li key = {`t-${item.task.id}`}>
- <Link
- to = "/tasks"
- className = "block rounded-md border border-violet-100 bg-violet-50 px-2 py-1 text-xs text-violet-900 hover:bg-violet-100 dark:border-violet-800/30 dark:bg-violet-900/20 dark:text-violet-200 dark:hover:bg-violet-900/40"
- >
- <span className = "font-medium">Task</span>
- <span className = "mt-0.5 block truncate">{item.task.title}</span>
- <span className = "text-[10px] text-violet-700 dark:text-violet-300">
- {new Date(item.task.dueAt!).toLocaleTimeString(undefined, {
- hour: 'numeric',
- minute: '2-digit',
- })}
- </span>
- </Link>
- </li>
+  <li key={`t-${item.task.id}`}>
+    <button
+      type="button"
+      onClick={() => {
+        if (onEditTask) onEditTask(item.task)
+      }}
+      className="w-full text-left rounded-md border border-violet-100 bg-violet-50 px-2 py-1 text-xs text-violet-900 hover:bg-violet-100 dark:border-violet-800/30 dark:bg-violet-900/20 dark:text-violet-200 dark:hover:bg-violet-900/40"
+    >
+      <span className="font-medium">Task</span>
+      <span className="mt-0.5 block truncate">{item.task.title}</span>
+      <span className="text-[10px] text-violet-700 dark:text-violet-300">
+        {new Date(item.task.dueAt!).toLocaleTimeString(undefined, {
+          hour: 'numeric',
+          minute: '2-digit',
+        })}
+      </span>
+    </button>
+  </li>
  ) : (
  <li key = {`e-${item.event.id}`}>
  <button

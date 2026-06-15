@@ -1,362 +1,326 @@
 import { Router, type Request } from 'express'
-import type { Pool, PoolClient } from 'pg'
-import {
- noteRowToDetail,
- noteRowToListItem,
- type NoteRow,
- type NoteSummaryRow,
-} from '../domain/noteRow'
-import { pool } from '../db'
+import { noteRowToDetail, noteRowToListItem } from '../domain/noteRow'
+import { prisma } from '../db'
 import { slugify } from '../lib/slug'
 import { extractWikiTargets } from '../lib/wikiLinks'
 import { requireAuth, type AuthedRequest } from '../middleware/auth'
+import { asyncHandler } from '../utils/asyncHandler'
+
 const router = Router()
 router.use(requireAuth)
+
 function userIdFrom(req: Request): string {
- return (req as unknown as AuthedRequest).userId
+  return (req as unknown as AuthedRequest).userId
 }
-async function nextUniqueSlug(
- client: PoolClient,
- userId: string,
- base: string,
- excludeId: string | null
-): Promise<string> {
- let slug = slugify(base)
- let i = 0
- for (;;) {
- const q = await client.query<{ id: string }>(
- `SELECT id FROM notes WHERE user_id = $1 AND slug = $2 AND ($3::uuid IS NULL OR id <> $3)`,
- [userId, slug, excludeId]
- )
- if (q.rowCount === 0) return slug
- i + = 1
- slug = `${slugify(base)}-${i}`
- }
+
+async function nextUniqueSlug(userId: string, base: string, excludeId: string | null): Promise<string> {
+  let slug = slugify(base)
+  let i = 0
+  for (;;) {
+    const note = await prisma.note.findFirst({
+      where: {
+        user_id: userId,
+        slug,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    })
+    if (!note) return slug
+    i += 1
+    slug = `${slugify(base)}-${i}`
+  }
 }
-async function syncNoteLinks(client: PoolClient, userId: string, fromNoteId: string, content: string) {
- await client.query(`DELETE FROM note_links WHERE from_note_id = $1`, [fromNoteId])
- const targets = extractWikiTargets(content).map(t => t.trim()).filter(Boolean)
- if (targets.length === 0) return
- const slugs = targets.map(slugify)
- const rawNames = targets.map(t => t.toLowerCase())
- const r = await client.query<{ id: string }>(
-   `SELECT id FROM notes
-    WHERE user_id = $1
-    AND (slug = ANY($2::text[]) OR lower(trim(title)) = ANY($3::text[]))`,
-   [userId, slugs, rawNames]
- )
- const toIds = Array.from(new Set(r.rows.map(row => row.id))).filter(id => id !== fromNoteId)
- if (toIds.length === 0) return
- await client.query(
-   `INSERT INTO note_links (from_note_id, to_note_id, user_id)
-    SELECT $1, unnest($2::uuid[]), $3
-    ON CONFLICT DO NOTHING`,
-   [fromNoteId, toIds, userId]
- )
+
+async function syncNoteLinks(userId: string, fromNoteId: string, content: string) {
+  await prisma.noteLink.deleteMany({ where: { from_note_id: fromNoteId } })
+  const targets = extractWikiTargets(content).map((t) => t.trim()).filter(Boolean)
+  if (targets.length === 0) return
+
+  const slugs = targets.map(slugify)
+  // We'll use a crude fallback for insensitive title match using raw SQL since Prisma's mode: 'insensitive' is not perfectly aligned sometimes for arrays
+  // but Prisma supports `in` with `mode: 'insensitive'` on PostgreSQL! Wait, let's just use raw queries for the ID fetch if needed.
+  // Prisma `mode: 'insensitive'` for `in` is not standard, let's use Prisma `$queryRaw` to be safe.
+  
+  const rawNames = targets.map((t) => t.toLowerCase())
+  const r: any[] = await prisma.$queryRaw`
+    SELECT id FROM notes
+    WHERE user_id = ${userId}::uuid
+    AND (slug = ANY(${slugs}::text[]) OR lower(trim(title)) = ANY(${rawNames}::text[]))
+  `
+
+  const toIds = Array.from(new Set(r.map((row) => row.id))).filter((id) => id !== fromNoteId)
+  if (toIds.length === 0) return
+
+  await prisma.noteLink.createMany({
+    data: toIds.map((to_note_id) => ({
+      from_note_id: fromNoteId,
+      to_note_id,
+      user_id: userId,
+    })),
+    skipDuplicates: true,
+  })
 }
-type NoteRowWithTags = NoteRow & { tags: string[] }
-function isMissingRelationError(err: unknown) {
- const message = typeof err === 'object' && err !== null ? (err as any).message : ''
- return (
- typeof message === 'string' &&
- (message.includes('relation "note_tags" does not exist') ||
- message.includes('relation "tags" does not exist') ||
- message.includes('relation "notes" does not exist'))
- )
-}
+
 function normalizeTagName(name: string) {
- return name.trim()
+  return name.trim()
 }
-async function syncNoteTags(client: PoolClient, userId: string, noteId: string, tags: readonly string[]) {
- const cleaned = tags.map(normalizeTagName).filter((tag) => tag.length > 0)
- const uniqueTags = Array.from(new Set(cleaned.map((tag) => tag.toLowerCase()))).map(
- (lower) => cleaned.find((tag) => tag.toLowerCase() === lower) as string
- )
- try {
- await client.query(`DELETE FROM note_tags WHERE note_id = $1`, [noteId])
- if (uniqueTags.length === 0) return
- const names = uniqueTags
- const normalizedNames = names.map(n => n.toLowerCase())
- await client.query(
-   `INSERT INTO tags (user_id, name, normalized_name)
-    SELECT $1, unnest($2::text[]), unnest($3::text[])
-    ON CONFLICT (user_id, normalized_name) DO UPDATE SET name = EXCLUDED.name`,
-   [userId, names, normalizedNames]
- )
- const tagResult = await client.query<{ id: string }>(
-   `SELECT id FROM tags WHERE user_id = $1 AND normalized_name = ANY($2::text[])`,
-   [userId, normalizedNames]
- )
- const tagIds = tagResult.rows.map(r => r.id)
- if (tagIds.length > 0) {
-   await client.query(
-     `INSERT INTO note_tags (note_id, tag_id)
-      SELECT $1, unnest($2::uuid[])
-      ON CONFLICT DO NOTHING`,
-     [noteId, tagIds]
-   )
- }
- } catch (err) {
- if (isMissingRelationError(err)) return
- throw err
- }
+
+async function syncNoteTags(userId: string, noteId: string, tags: readonly string[]) {
+  const cleaned = tags.map(normalizeTagName).filter((tag) => tag.length > 0)
+  const uniqueTags = Array.from(new Set(cleaned.map((tag) => tag.toLowerCase()))).map(
+    (lower) => cleaned.find((tag) => tag.toLowerCase() === lower) as string
+  )
+
+  await prisma.noteTag.deleteMany({ where: { note_id: noteId } })
+  if (uniqueTags.length === 0) return
+
+  for (const name of uniqueTags) {
+    const normalizedName = name.toLowerCase()
+    await prisma.tag.upsert({
+      where: { user_id_normalized_name: { user_id: userId, normalized_name: normalizedName } },
+      update: { name },
+      create: { user_id: userId, name, normalized_name: normalizedName },
+    })
+  }
+
+  const normalizedNames = uniqueTags.map((t) => t.toLowerCase())
+  const dbTags = await prisma.tag.findMany({
+    where: { user_id: userId, normalized_name: { in: normalizedNames } },
+  })
+
+  if (dbTags.length > 0) {
+    await prisma.noteTag.createMany({
+      data: dbTags.map((t) => ({ note_id: noteId, tag_id: t.id })),
+      skipDuplicates: true,
+    })
+  }
 }
-async function fetchNoteDetail(client: Pool | PoolClient, userId: string, id: string): Promise<NoteRowWithTags | null> {
- try {
- const result = await client.query<NoteRowWithTags>(
- `SELECT n.id,
- n.user_id,
- n.title,
- n.slug,
- n.content,
- n.folder_id,
- n.created_at,
- n.updated_at,
- COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.id IS NOT NULL), ARRAY[]::text[]) AS tags
- FROM notes n
- LEFT JOIN note_tags nt ON n.id = nt.note_id
- LEFT JOIN tags t ON nt.tag_id = t.id
- WHERE n.user_id = $1 AND n.id = $2
- GROUP BY n.id`,
- [userId, id]
- )
- return result.rows[0] ?? null
- } catch (err) {
- if (isMissingRelationError(err)) {
- const result = await client.query<NoteRow>(
- `SELECT id, user_id, title, slug, content, folder_id, created_at, updated_at
- FROM notes
- WHERE user_id = $1 AND id = $2`,
- [userId, id]
- )
- if (result.rowCount === 0) return null
- return { ...result.rows[0], tags: [] }
- }
- throw err
- }
+
+async function fetchNoteDetail(userId: string, id: string) {
+  const note = await prisma.note.findUnique({
+    where: { id },
+    include: { note_tags: { include: { tag: true } } },
+  })
+  if (!note || note.user_id !== userId) return null
+
+  return {
+    ...note,
+    tags: note.note_tags.map((nt) => nt.tag.name).sort(),
+  }
 }
-router.get('/tags', async (req, res) => {
- const userId = userIdFrom(req)
- try {
- const result = await pool.query<{ id: string; name: string }>(
- `SELECT id, name FROM tags WHERE user_id = $1 ORDER BY lower(name)`,
- [userId]
- )
- res.json({ tags: result.rows })
- } catch (err) {
- console.error(err)
- res.status(500).json({ error: 'Could not load tags' })
- }
-})
-router.get('/', async (req, res) => {
- const userId = userIdFrom(req)
- try {
- const result = await pool.query<NoteSummaryRow>(
- `SELECT id, user_id, title, slug, folder_id, created_at, updated_at
- FROM notes WHERE user_id = $1
- ORDER BY updated_at DESC`,
- [userId]
- )
- res.json({ notes: result.rows.map(noteRowToListItem) })
- } catch (err) {
- console.error(err)
- res.status(500).json({ error: 'Could not load notes' })
- }
-})
-router.get('/graph', async (req, res) => {
- const userId = userIdFrom(req)
- try {
- const notesResult = await pool.query(`SELECT id, title FROM notes WHERE user_id = $1`, [userId])
- const linksResult = await pool.query(
- `SELECT from_note_id as source, to_note_id as target FROM note_links WHERE user_id = $1`,
- [userId]
- )
- res.json({
- nodes: notesResult.rows,
- links: linksResult.rows,
- })
- } catch (err) {
- console.error(err)
- res.status(500).json({ error: 'Could not load graph data' })
- }
-})
-router.get('/:id/backlinks', async (req, res) => {
- const userId = userIdFrom(req)
- const id = req.params.id
- try {
- const result = await pool.query<NoteSummaryRow>(
- `SELECT n.id, n.user_id, n.title, n.slug, n.folder_id, n.created_at, n.updated_at
- FROM notes n
- INNER JOIN note_links l ON l.from_note_id = n.id
- WHERE l.to_note_id = $1 AND n.user_id = $2
- ORDER BY n.title ASC`,
- [id, userId]
- )
- res.json({ notes: result.rows.map(noteRowToListItem) })
- } catch (err) {
- console.error(err)
- res.status(500).json({ error: 'Could not load backlinks' })
- }
-})
-router.get('/:id', async (req, res) => {
- const userId = userIdFrom(req)
- const id = req.params.id
- try {
- const note = await fetchNoteDetail(pool, userId, id)
- if (!note) {
- res.status(404).json({ error: 'Note not found' })
- return
- }
- res.json({ note: noteRowToDetail(note) })
- } catch (err) {
- console.error(err)
- res.status(500).json({ error: 'Could not load note' })
- }
-})
-router.post('/', async (req, res) => {
- const userId = userIdFrom(req)
- const title = typeof req.body?.title === 'string' ? req.body.title.trim() : ''
- if (!title) {
- res.status(400).json({ error: 'Title is required' })
- return
- }
- const content = typeof req.body?.content === 'string' ? req.body.content : ''
- const folderId = typeof req.body?.folderId === 'string' ? req.body.folderId : null
- const tags = Array.isArray(req.body?.tags) ? req.body.tags.map(String) : []
- const client = await pool.connect()
- try {
- await client.query('BEGIN')
- const slug = await nextUniqueSlug(client, userId, title, null)
- const ins = await client.query<NoteRow>(
- `INSERT INTO notes (user_id, title, slug, content, folder_id)
- VALUES ($1, $2, $3, $4, $5)
- RETURNING id, user_id, title, slug, content, folder_id, created_at, updated_at`,
- [userId, title, slug, content, folderId]
- )
- const row = ins.rows[0]
- await syncNoteLinks(client, userId, row.id, content)
- if (tags.length > 0) {
- await syncNoteTags(client, userId, row.id, tags)
- }
- const detail = await fetchNoteDetail(client, userId, row.id)
- await client.query('COMMIT')
- res.status(201).json({ note: noteRowToDetail(detail as NoteRowWithTags) })
- } catch (err) {
- await client.query('ROLLBACK')
- console.error(err)
- res.status(500).json({ error: 'Could not create note' })
- } finally {
- client.release()
- }
-})
-router.patch('/:id', async (req, res) => {
- const userId = userIdFrom(req)
- const id = req.params.id
- const updates: string[] = []
- const values: unknown[] = []
- let i = 1
- let newTitle: string | undefined
- let newContent: string | undefined
- let newTags: string[] | undefined
- if (req.body?.title !== undefined) {
- if (typeof req.body.title !== 'string' || !req.body.title.trim()) {
- res.status(400).json({ error: 'Title cannot be empty' })
- return
- }
- newTitle = req.body.title.trim()
- updates.push(`title = $${i++}`)
- values.push(newTitle)
- }
- if (req.body?.content !== undefined) {
- if (typeof req.body.content !== 'string') {
- res.status(400).json({ error: 'content must be a string' })
- return
- }
- newContent = req.body.content
- updates.push(`content = $${i++}`)
- values.push(newContent)
- }
- if (req.body?.folderId !== undefined) {
- const folderId = req.body.folderId === null ? null : String(req.body.folderId)
- updates.push(`folder_id = $${i++}`)
- values.push(folderId)
- }
- if (req.body?.tags !== undefined) {
- if (!Array.isArray(req.body.tags)) {
- res.status(400).json({ error: 'tags must be an array' })
- return
- }
- newTags = req.body.tags.map(String)
- }
- if (updates.length === 0 && newTags === undefined) {
- res.status(400).json({ error: 'No valid fields to update' })
- return
- }
- const client = await pool.connect()
- try {
- await client.query('BEGIN')
- const cur = await client.query<NoteRow>(
- `SELECT id, user_id, title, slug, content, folder_id, created_at, updated_at
- FROM notes WHERE user_id = $1 AND id = $2 FOR UPDATE`,
- [userId, id]
- )
- if (cur.rowCount === 0) {
- await client.query('ROLLBACK')
- res.status(404).json({ error: 'Note not found' })
- return
- }
- const row = cur.rows[0]
- const titleVal = newTitle ?? row.title
- const contentVal = newContent ?? row.content
- if (newTitle !== undefined) {
- const newSlug = await nextUniqueSlug(client, userId, titleVal, id)
- updates.push(`slug = $${i++}`)
- values.push(newSlug)
- }
- let updated: NoteRow
- if (updates.length > 0) {
- updates.push(`updated_at = NOW()`)
- const userParam = i
- const idParam = i + 1
- values.push(userId, id)
- const result = await client.query<NoteRow>(
- `UPDATE notes SET ${updates.join(', ')}
- WHERE user_id = $${userParam} AND id = $${idParam}
- RETURNING id, user_id, title, slug, content, folder_id, created_at, updated_at`,
- values
- )
- updated = result.rows[0]
- } else {
- updated = row
- }
- await syncNoteLinks(client, userId, updated.id, updated.content)
- if (newTags !== undefined) {
- await syncNoteTags(client, userId, updated.id, newTags)
- }
- const detail = await fetchNoteDetail(client, userId, updated.id)
- await client.query('COMMIT')
- res.json({ note: noteRowToDetail(detail as NoteRowWithTags) })
- } catch (err) {
- await client.query('ROLLBACK')
- console.error(err)
- res.status(500).json({ error: 'Could not update note' })
- } finally {
- client.release()
- }
-})
-router.delete('/:id', async (req, res) => {
- const userId = userIdFrom(req)
- const id = req.params.id
- try {
- const result = await pool.query(`DELETE FROM notes WHERE user_id = $1 AND id = $2`, [userId, id])
- if (result.rowCount === 0) {
- res.status(404).json({ error: 'Note not found' })
- return
- }
- res.status(204).send()
- } catch (err) {
- console.error(err)
- res.status(500).json({ error: 'Could not delete note' })
- }
-})
+
+router.get(
+  '/tags',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const tags = await prisma.tag.findMany({
+      where: { user_id: userId },
+      select: { id: true, name: true },
+      orderBy: { normalized_name: 'asc' },
+    })
+    res.json({ tags })
+  })
+)
+
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const notes = await prisma.note.findMany({
+      where: { user_id: userId },
+      select: {
+        id: true,
+        user_id: true,
+        title: true,
+        slug: true,
+        folder_id: true,
+        created_at: true,
+        updated_at: true,
+      },
+      orderBy: { updated_at: 'desc' },
+    })
+    res.json({ notes: notes.map(noteRowToListItem as any) })
+  })
+)
+
+router.get(
+  '/graph',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const [nodes, links] = await Promise.all([
+      prisma.note.findMany({
+        where: { user_id: userId },
+        select: { id: true, title: true },
+      }),
+      prisma.noteLink.findMany({
+        where: { user_id: userId },
+        select: { from_note_id: true, to_note_id: true },
+      }),
+    ])
+
+    res.json({
+      nodes,
+      links: links.map((l) => ({ source: l.from_note_id, target: l.to_note_id })),
+    })
+  })
+)
+
+router.get(
+  '/:id/backlinks',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const id = req.params.id as string
+
+    const links = await prisma.noteLink.findMany({
+      where: { to_note_id: id, user_id: userId },
+      include: { from_note: true },
+      orderBy: { from_note: { title: 'asc' } },
+    })
+
+    const notes = links.map((l) => l.from_note)
+    res.json({ notes: notes.map(noteRowToListItem as any) })
+  })
+)
+
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const id = req.params.id as string
+
+    const note = await fetchNoteDetail(userId, id)
+    if (!note) {
+      res.status(404).json({ error: 'Note not found' })
+      return
+    }
+
+    res.json({ note: noteRowToDetail(note as any) })
+  })
+)
+
+router.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : ''
+    if (!title) {
+      res.status(400).json({ error: 'Title is required' })
+      return
+    }
+
+    const content = typeof req.body?.content === 'string' ? req.body.content : ''
+    const folderId = typeof req.body?.folderId === 'string' ? req.body.folderId : null
+    const tags = Array.isArray(req.body?.tags) ? req.body.tags.map(String) : []
+
+    // Transaction for creating note
+    const slug = await nextUniqueSlug(userId, title, null)
+    const note = await prisma.note.create({
+      data: {
+        user_id: userId,
+        title,
+        slug,
+        content,
+        folder_id: folderId,
+      },
+    })
+
+    await syncNoteLinks(userId, note.id, content)
+    if (tags.length > 0) {
+      await syncNoteTags(userId, note.id, tags)
+    }
+
+    const detail = await fetchNoteDetail(userId, note.id)
+    res.status(201).json({ note: noteRowToDetail(detail as any) })
+  })
+)
+
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const id = req.params.id as string
+    const data: any = {}
+    let newTags: string[] | undefined
+
+    if (req.body?.title !== undefined) {
+      if (typeof req.body.title !== 'string' || !req.body.title.trim()) {
+        res.status(400).json({ error: 'Title cannot be empty' })
+        return
+      }
+      data.title = req.body.title.trim()
+    }
+
+    if (req.body?.content !== undefined) {
+      if (typeof req.body.content !== 'string') {
+        res.status(400).json({ error: 'content must be a string' })
+        return
+      }
+      data.content = req.body.content
+    }
+
+    if (req.body?.folderId !== undefined) {
+      data.folder_id = req.body.folderId === null ? null : String(req.body.folderId)
+    }
+
+    if (req.body?.tags !== undefined) {
+      if (!Array.isArray(req.body.tags)) {
+        res.status(400).json({ error: 'tags must be an array' })
+        return
+      }
+      newTags = req.body.tags.map(String)
+    }
+
+    if (Object.keys(data).length === 0 && newTags === undefined) {
+      res.status(400).json({ error: 'No valid fields to update' })
+      return
+    }
+
+    const row = await prisma.note.findUnique({ where: { id } })
+    if (!row || row.user_id !== userId) {
+      res.status(404).json({ error: 'Note not found' })
+      return
+    }
+
+    if (data.title !== undefined && data.title !== row.title) {
+      data.slug = await nextUniqueSlug(userId, data.title, id)
+    }
+
+    let updated = row
+    if (Object.keys(data).length > 0) {
+      data.updated_at = new Date()
+      updated = await prisma.note.update({
+        where: { id },
+        data,
+      })
+    }
+
+    await syncNoteLinks(userId, updated.id, updated.content)
+    if (newTags !== undefined) {
+      await syncNoteTags(userId, updated.id, newTags)
+    }
+
+    const detail = await fetchNoteDetail(userId, updated.id)
+    res.json({ note: noteRowToDetail(detail as any) })
+  })
+)
+
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const userId = userIdFrom(req)
+    const id = req.params.id as string
+
+    const deletedNote = await prisma.note.deleteMany({
+      where: { user_id: userId, id },
+    })
+
+    if (deletedNote.count === 0) {
+      res.status(404).json({ error: 'Note not found' })
+      return
+    }
+
+    res.status(204).send()
+  })
+)
+
 export default router

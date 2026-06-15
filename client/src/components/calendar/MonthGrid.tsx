@@ -17,11 +17,12 @@ function cellItems(day: Date, tasks: Task[], events: CalendarEvent[]) {
  return out.slice(0, 4)
 }
 type Props = {
- anchor: Date
- tasks: Task[]
- events: CalendarEvent[]
- onSelectDay: (day: Date) => void
- onEditEvent: (event: CalendarEvent) => void
+  anchor: Date
+  tasks: Task[]
+  events: CalendarEvent[]
+  onSelectDay: (day: Date) => void
+  onEditEvent: (event: CalendarEvent) => void
+  onEditTask?: (task: Task) => void
 }
 export function MonthGrid({ anchor, tasks, events, onSelectDay, onEditEvent }: Props) {
  const grid = getMonthGridDates(anchor)
@@ -62,16 +63,20 @@ export function MonthGrid({ anchor, tasks, events, onSelectDay, onEditEvent }: P
  <ul className = "mt-1 space-y-0.5">
  {items.map((item) =>
  item.type === 'task' ? (
- <li key = {`t-${item.id}`}>
- <Link
- to = "/tasks"
- onClick = {(e) => e.stopPropagation()}
- className = "block truncate rounded px-0.5 text-[10px] text-violet-800 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-900/40 sm:text-xs"
- title = {item.label}
- >
- · {item.label}
- </Link>
- </li>
+  <li key={`t-${item.id}`}>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        const t = tasks.find((x) => x.id === item.id)
+        if (t && onEditTask) onEditTask(t)
+      }}
+      className="w-full text-left truncate rounded px-0.5 text-[10px] text-violet-800 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-900/40 sm:text-xs"
+      title={item.label}
+    >
+      · {item.label}
+    </button>
+  </li>
  ) : (
  <li key = {`e-${item.id}`}>
  <button
