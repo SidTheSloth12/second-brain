@@ -10,8 +10,8 @@ The application follows a standard client-server architecture with a RESTful API
 
 ```mermaid
 graph TD
-    Client[Client (React SPA)] -->|REST API over HTTP| API[Server (Express API)]
-    API -->|Prisma ORM| DB[(Supabase PostgreSQL)]
+    Client["Client (React SPA)"] -->|REST API over HTTP| API["Server (Express API)"]
+    API -->|Prisma ORM| DB[("Supabase PostgreSQL")]
 ```
 
 - **Client:** A Single Page Application (SPA) built with React, Vite, and Tailwind CSS. It uses React Query for efficient data fetching, caching, and state synchronization. It communicates with the backend exclusively via RESTful endpoints.
