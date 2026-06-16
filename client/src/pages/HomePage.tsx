@@ -1,66 +1,58 @@
-import { useState, useCallback } from 'react'
-import { Dashboard } from '../components/Dashboard'
-import { useAuth } from '../auth/useAuth'
-import lines from '../data/lines.json'
-import { motion, AnimatePresence } from 'framer-motion'
-
-const STORAGE_KEY = 'lineIndex'
-
+import { useState, useCallback } from'react'
+import { Dashboard } from'../components/Dashboard'
+import { useAuth } from'../auth/useAuth'
+import lines from'../data/lines.json'
+import { motion, AnimatePresence } from'framer-motion'
+const STORAGE_KEY ='lineIndex'
 function getInitialIndex(): number {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored !== null) {
-      const parsed = parseInt(stored, 10)
-      if (!isNaN(parsed) && parsed >= 0 && parsed < lines.length) return parsed
+    const stored=localStorage.getItem(STORAGE_KEY)
+    if (stored!==null) {
+      const parsed=parseInt(stored, 10)
+      if (!isNaN(parsed)&&parsed>=0&&parsed<lines.length) return parsed
     }
   } catch {}
-  // fallback: seed by today's date
-  const seed = new Date().toDateString().split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+  const seed=new Date().toDateString().split('').reduce((a, b)=>a+b.charCodeAt(0), 0)
   return seed % lines.length
 }
-
 export function HomePage() {
-  const { user } = useAuth()
-  const [quoteIndex, setQuoteIndex] = useState<number>(getInitialIndex)
-  const [spinning, setSpinning] = useState(false)
-
-  const handleNext = useCallback(() => {
+  const { user }=useAuth()
+  const [quoteIndex, setQuoteIndex]=useState<number>(getInitialIndex)
+  const [spinning, setSpinning]=useState(false)
+  const handleNext=useCallback(()=>{
     setSpinning(true)
-    setTimeout(() => setSpinning(false), 400)
-    setQuoteIndex(prev => {
-      const next = (prev + 1) % lines.length
+    setTimeout(()=>setSpinning(false), 400)
+    setQuoteIndex(prev=>{
+      const next=(prev+1) % lines.length
       try { localStorage.setItem(STORAGE_KEY, String(next)) } catch {}
       return next
     })
   }, [])
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-10">
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y:-20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
+        transition={{ duration: 0.5, ease:'easeOut' }}
         className="space-y-2"
       >
         <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Welcome back!</h1>
         <p className="text-lg text-slate-600 dark:text-slate-400">
-          Signed in as <span className="font-semibold text-violet-600 dark:text-violet-400">{user?.email}</span>
+          Signed in as<span className="font-semibold text-violet-600 dark:text-violet-400">{user?.email}</span>
         </p>
       </motion.div>
-
-      <Dashboard />
-
+      <Dashboard/>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5, ease: 'easeOut' }}
+        transition={{ delay: 0.4, duration: 0.5, ease:'easeOut' }}
         className="rounded-3xl border border-slate-200 bg-white/60 p-8 shadow-sm backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/40 relative overflow-hidden group hover:border-violet-200 dark:hover:border-violet-500/20 transition-colors"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity dark:from-violet-900/10"></div>
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span className="text-violet-600 dark:text-violet-400 text-2xl">❝</span> Lines
+              <span className="text-violet-600 dark:text-violet-400 text-2xl">❝</span>Lines
             </h2>
             <button
               onClick={handleNext}
@@ -78,8 +70,8 @@ export function HomePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{
-                  transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  transform: spinning ? 'rotate(360deg)' : 'rotate(0deg)',
+                  transition:'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  transform: spinning ?'rotate(360deg)' :'rotate(0deg)',
                 }}
               >
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -94,7 +86,7 @@ export function HomePage() {
                 key={quoteIndex}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                exit={{ opacity: 0, x:-20 }}
                 transition={{ duration: 0.3 }}
                 className="text-2xl font-medium leading-relaxed italic text-slate-800 dark:text-slate-200"
               >
@@ -104,7 +96,7 @@ export function HomePage() {
           </div>
           <div className="mt-8 flex justify-end">
             <p className="text-sm font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full select-none">
-              {quoteIndex + 1} / {lines.length}
+              {quoteIndex+1}/{lines.length}
             </p>
           </div>
         </div>

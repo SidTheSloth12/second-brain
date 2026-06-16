@@ -64,7 +64,7 @@
   display: flex;
   border-top: 1px solid var(--border);
   text-align: left;
-  & > div {
+  &>div {
     flex: 1 1 0;
     padding: 32px;
     @media (max-width: 1024px) {
@@ -121,7 +121,7 @@
     flex-wrap: wrap;
     justify-content: center;
     li {
-      flex: 1 1 calc(50% - 8px);
+      flex: 1 1 calc(50%-8px);
     }
     a {
       width: 100%;
@@ -142,9 +142,9 @@
   width: 100%;
   &::before,
   &::after {
-    content: '';
+    content:'';
     position: absolute;
-    top: -4.5px;
+    top:-4.5px;
     border: 5px solid transparent;
   }
   &::before {

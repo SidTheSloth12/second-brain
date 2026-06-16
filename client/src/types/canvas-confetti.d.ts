@@ -1,4 +1,4 @@
-declare module 'canvas-confetti' {
+declare module'canvas-confetti' {
  export interface ConfettiOptions {
  particleCount?: number
  angle?: number
@@ -8,12 +8,12 @@ declare module 'canvas-confetti' {
  gravity?: number
  ticks?: number
  origin?: { x?: number; y?: number }
- colors?: string[]
+ colors?:string[]
  scalar?: number
- shapes?: ('square' | 'circle')[]
+ shapes?: ('square' |'circle')[]
  zIndex?: number
  disableForReducedMotion?: boolean
- [key: string]: unknown
+ [key:string]: unknown
  }
  export interface CreateTypes {
  (options?: ConfettiOptions): boolean

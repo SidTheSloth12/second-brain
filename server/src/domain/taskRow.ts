@@ -1,14 +1,14 @@
-export type TaskPriority = 'low' | 'medium' | 'high'
-export type TaskStatus = 'open' | 'completed'
+export type TaskPriority ='low' |'medium' |'high'
+export type TaskStatus ='open' |'completed'
 export interface TaskRow {
- id: string
- user_id: string
- task_list_id: string | null
- title: string
- description: string | null
+ id:string
+ user_id:string
+ task_list_id:string | null
+ title:string
+ description:string | null
  due_at: Date | null
- priority: string
- status: string
+ priority:string
+ status:string
  completed_at: Date | null
  sort_order: number
  created_at: Date

@@ -1,36 +1,31 @@
-import { Router, type Request } from 'express'
-import { prisma } from '../db'
-import { requireAuth, type AuthedRequest } from '../middleware/auth'
-import { asyncHandler } from '../utils/asyncHandler'
-
-const router = Router()
+import { Router, type Request } from'express'
+import { prisma } from'../db'
+import { requireAuth, type AuthedRequest } from'../middleware/auth'
+import { asyncHandler } from'../utils/asyncHandler'
+const router=Router()
 router.use(requireAuth)
-
-function userIdFrom(req: Request): string {
+function userIdFrom(req: Request):string {
   return (req as unknown as AuthedRequest).userId
 }
-
 router.get(
-  '/',
-  asyncHandler(async (req, res) => {
-    const userId = userIdFrom(req)
-    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 240) : ''
-    const limitRaw = Number(req.query.limit)
-    const limit = Number.isFinite(limitRaw) ? Math.min(50, Math.max(1, Math.floor(limitRaw))) : 25
-
+'/',
+  asyncHandler(async (req, res)=>{
+    const userId=userIdFrom(req)
+    const q=typeof req.query.q==='string' ? req.query.q.trim().slice(0, 240) :''
+    const limitRaw=Number(req.query.limit)
+    const limit=Number.isFinite(limitRaw) ? Math.min(50, Math.max(1, Math.floor(limitRaw))) : 25
     if (!q) {
       res.json({ results: [] })
       return
     }
-
     try {
-      const result = await prisma.$queryRaw<
+      const result=await prisma.$queryRaw<
         {
-          type: string
-          result_id: string
-          title: string
+          type:string
+          result_id:string
+          title:string
           entry_date: Date | null
-          snippet: string
+          snippet:string
           rank: number
         }[]
       >`
@@ -79,25 +74,23 @@ router.get(
   ORDER BY rank DESC NULLS LAST, title ASC
   LIMIT ${limit}::int
   `
-
       res.json({
-        results: result.map((row) => ({
-          type: row.type as 'note' | 'journal',
+        results: result.map((row)=>({
+          type: row.type as'note' |'journal',
           id: row.result_id,
           title: row.title,
           snippet: row.snippet,
           rank: row.rank,
           entryDate:
-            row.type === 'journal' && row.entry_date
+            row.type==='journal' && row.entry_date
               ? new Date(row.entry_date).toISOString().slice(0, 10)
               : null,
         })),
       })
     } catch (err) {
       console.error(err)
-      res.status(400).json({ error: 'Invalid search query' })
+      res.status(400).json({ error:'Invalid search query' })
     }
   })
 )
-
 export default router

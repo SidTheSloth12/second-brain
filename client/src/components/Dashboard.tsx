@@ -1,61 +1,55 @@
-import { useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { fetchCalendarRange } from '../lib/calendarApi'
-import { fetchNotes } from '../lib/notesApi'
-import { fetchTasks } from '../lib/tasksApi'
-import { CalendarDays, FileText, CheckSquare } from 'lucide-react'
-import { motion } from 'framer-motion'
-
+import { useQuery } from'@tanstack/react-query'
+import { useMemo } from'react'
+import { Link } from'react-router-dom'
+import { fetchCalendarRange } from'../lib/calendarApi'
+import { fetchNotes } from'../lib/notesApi'
+import { fetchTasks } from'../lib/tasksApi'
+import { CalendarDays, FileText, CheckSquare } from'lucide-react'
+import { motion } from'framer-motion'
 export function Dashboard() {
-  const { rangeStart, rangeEnd } = useMemo(() => {
-    const now = new Date()
+  const { rangeStart, rangeEnd }=useMemo(()=>{
+    const now=new Date()
     now.setHours(0, 0, 0, 0)
-    const nextWeek = new Date(now)
-    nextWeek.setDate(now.getDate() + 7)
+    const nextWeek=new Date(now)
+    nextWeek.setDate(now.getDate()+7)
     return { rangeStart: now, rangeEnd: nextWeek }
   }, [])
-
-  const { data: calendarData } = useQuery({
+  const { data: calendarData }=useQuery({
     queryKey: ['calendar-range', rangeStart.toISOString(), rangeEnd.toISOString()],
-    queryFn: () => fetchCalendarRange(rangeStart, rangeEnd),
+    queryFn: ()=>fetchCalendarRange(rangeStart, rangeEnd),
   })
-  const { data: notes = [] } = useQuery({
+  const { data: notes=[] }=useQuery({
     queryKey: ['notes'],
     queryFn: fetchNotes,
   })
-  const { data: tasksData } = useQuery({
-    queryKey: ['tasks', 'open'],
-    queryFn: () => fetchTasks('open'),
+  const { data: tasksData }=useQuery({
+    queryKey: ['tasks','open'],
+    queryFn: ()=>fetchTasks('open'),
   })
-
-  const tasks = tasksData?.tasks ?? []
-  const upcomingEvents = calendarData?.events ?? []
-  const lastNote = notes[0]
-
-  const priorityCounts = tasks.reduce(
-    (counts, task) => {
-      if (task.priority === 'high') counts.high += 1
-      else if (task.priority === 'medium') counts.medium += 1
-      else if (task.priority === 'low') counts.low += 1
-      else counts.other += 1
+  const tasks=tasksData?.tasks ?? []
+  const upcomingEvents=calendarData?.events ?? []
+  const lastNote=notes[0]
+  const priorityCounts=tasks.reduce(
+    (counts, task)=>{
+      if (task.priority==='high') counts.high+=1
+      else if (task.priority==='medium') counts.medium+=1
+      else if (task.priority==='low') counts.low+=1
+      else counts.other+=1
       return counts
     },
     { high: 0, medium: 0, low: 0, other: 0 }
   )
-
-  const cardVariants = {
+  const cardVariants={
     hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
+    visible: (i: number)=>({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1, duration: 0.4, ease: 'easeOut' },
+      transition: { delay: i*0.1, duration: 0.4 },
     }),
   }
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {/* Upcoming Events */}
+      {}
       <motion.div
         custom={0}
         initial="hidden"
@@ -73,39 +67,38 @@ export function Dashboard() {
           </div>
         </div>
         <div className="mt-6 flex-1 flex flex-col space-y-3">
-          {upcomingEvents.length === 0 ? (
+          {upcomingEvents.length===0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400 flex-1">No events scheduled for the coming week.</p>
           ) : (
             <div className="space-y-3 flex-1">
-              {upcomingEvents.slice(0, 5).map((event) => (
+              {upcomingEvents.slice(0, 5).map((event)=>(
                 <div key={event.id} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-slate-700/50 dark:bg-slate-800/50 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800">
                   <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{event.title}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {new Date(event.startsAt).toLocaleString(undefined, {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
+                      weekday:'short',
+                      month:'short',
+                      day:'numeric',
+                      hour:'numeric',
+                      minute:'2-digit',
                     })}
                   </p>
                 </div>
               ))}
             </div>
           )}
-          {upcomingEvents.length > 5 && (
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center pt-2">And {upcomingEvents.length - 5} more event(s).</p>
+          {upcomingEvents.length>5&&(
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center pt-2">And {upcomingEvents.length-5} more event(s).</p>
           )}
           <Link
             to="/calendar"
             className="mt-auto pt-4 inline-flex items-center text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
           >
-            View calendar <span className="ml-1 text-lg leading-none">→</span>
+            View calendar<span className="ml-1 text-lg leading-none">→</span>
           </Link>
         </div>
       </motion.div>
-
-      {/* Last Note */}
+      {}
       <motion.div
         custom={1}
         initial="hidden"
@@ -135,7 +128,7 @@ export function Dashboard() {
                 to={`/notes/${lastNote.id}`}
                 className="mt-auto inline-flex items-center text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
               >
-                Open note <span className="ml-1 text-lg leading-none">→</span>
+                Open note<span className="ml-1 text-lg leading-none">→</span>
               </Link>
             </div>
           ) : (
@@ -143,8 +136,7 @@ export function Dashboard() {
           )}
         </div>
       </motion.div>
-
-      {/* Tasks by Priority */}
+      {}
       <motion.div
         custom={2}
         initial="hidden"
@@ -175,7 +167,7 @@ export function Dashboard() {
               <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">Low</p>
               <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{priorityCounts.low}</p>
             </div>
-            {priorityCounts.other > 0 && (
+            {priorityCounts.other>0&&(
               <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-700/50 dark:bg-slate-800/50 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 flex flex-col justify-center items-center">
                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Other</p>
                 <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{priorityCounts.other}</p>
@@ -186,7 +178,7 @@ export function Dashboard() {
             to="/tasks"
             className="mt-auto pt-4 inline-flex items-center text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
           >
-            View tasks <span className="ml-1 text-lg leading-none">→</span>
+            View tasks<span className="ml-1 text-lg leading-none">→</span>
           </Link>
         </div>
       </motion.div>

@@ -1,12 +1,7 @@
-/**
- * Hook to trigger a confetti animation on demand.
- * Uses canvas-confetti with minimal impact.
- */
 export function useConfetti() {
- return async (options?: { duration?: number; particleCount?: number }) => {
+ return async (options?: { duration?: number; particleCount?: number })=>{
  try {
- const confetti = (await import('canvas-confetti')).default
- // Conservative defaults for subtle effect
+ const confetti=(await import('canvas-confetti')).default
  confetti({
  particleCount: options?.particleCount ?? 50,
  spread: 70,
@@ -17,7 +12,6 @@ export function useConfetti() {
  gravity: 0.5,
  })
  } catch (error) {
- // Gracefully handle if canvas-confetti fails to load
  console.warn('Confetti animation failed', error)
  }
  }

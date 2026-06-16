@@ -1,8 +1,8 @@
 export interface EventRow {
- id: string
- user_id: string
- title: string
- description: string | null
+ id:string
+ user_id:string
+ title:string
+ description:string | null
  starts_at: Date
  ends_at: Date
  all_day: boolean
