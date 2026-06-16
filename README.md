@@ -17,6 +17,7 @@ The basic idea: one place for everything: notes, tasks, journal, calendar. Wired
 - **Tasks** — Manage tasks with priorities, due dates, subtasks, and completion states. Includes confetti on task completion :)
 - **Calendar** — Schedule and view events on a monthly calendar with a clean agenda sidebar.
 - **Journal** — Write daily journal entries with a minimal, distraction-free interface. 
+- **Habits** — Track your daily routines and build consistency over time.
 - **Full-Text Search** — Search across all notes and content instantly with partial string matching.
 - **Dark / Light Mode** — Theme toggle.
 - **Authentication** — JWT-based auth with bcrypt password hashing and protected routes. 
@@ -45,6 +46,7 @@ The basic idea: one place for everything: notes, tasks, journal, calendar. Wired
 | Node.js + Express 5 | REST API server |
 | TypeScript | Type safety |
 | PostgreSQL | Relational database |
+| Prisma | Typescript ORM |
 | Supabase | Hosted Postgres (recommended) |
 | JWT | Authentication tokens |
 | bcryptjs | Password hashing |
@@ -97,15 +99,11 @@ FRONTEND_ORIGINS=http://localhost:5173
 PORT=5000
 ```
 
-Initialize the database (run these in order — order matters):
+Initialize the database using Prisma:
 
 ```bash
-psql $DATABASE_URL -f sql/init.sql
-psql $DATABASE_URL -f sql/folders.sql
-psql $DATABASE_URL -f sql/notes.sql
-psql $DATABASE_URL -f sql/tasks.sql
-psql $DATABASE_URL -f sql/events.sql
-psql $DATABASE_URL -f sql/journal_and_search.sql
+npx prisma generate
+npx prisma db push
 ```
 
 Start the server:
@@ -190,6 +188,7 @@ All routes are prefixed with `/api` and require a `Bearer` JWT token — except 
 | `GET/POST` | `/api/folders` | List / create folders |
 | `GET/POST` | `/api/tasks` | List / create tasks |
 | `GET/POST` | `/api/journal` | List / create journal entries |
+| `GET/POST` | `/api/habits` | List / create habits |
 | `GET/POST` | `/api/events` | List / create calendar events |
 | `GET` | `/api/search?q=` | Full-text search across notes |
 
@@ -204,5 +203,3 @@ The Obsidian-style notes, folder structure, and graph view are how I (try to) or
 Regarding the "Lines" section, it was made out of pure boredom. Lines I've come across from TV shows, books, movies, or the Internet. There's some real poetic beauty in there :)
 
 ---
-The graph feature has a few bugs, is being worked on right now.
-*I might add a habit tracker feature in the near future*.
