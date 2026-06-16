@@ -3,6 +3,13 @@ import { taskRowToJson } from'../domain/taskRow'
 import { prisma } from'../db'
 import { requireAuth, type AuthedRequest } from'../middleware/auth'
 import { asyncHandler } from'../utils/asyncHandler'
+import { z } from 'zod'
+
+const TaskValidationSchema = z.object({
+  title: z.string().max(255).optional(),
+  description: z.string().max(10000).nullable().optional(),
+})
+
 const router=Router()
 router.use(requireAuth)
 function userIdFrom(req: Request):string {
@@ -69,6 +76,12 @@ router.get(
 router.post(
 '/',
   asyncHandler(async (req, res)=>{
+    try {
+      TaskValidationSchema.parse(req.body)
+    } catch (e) {
+      res.status(400).json({ error: 'Payload validation failed: title must be < 255 chars and description < 10000 chars' })
+      return
+    }
     const userId=userIdFrom(req)
     const title=typeof req.body?.title==='string' ? req.body.title.trim() :''
     if (!title) {
@@ -114,6 +127,12 @@ router.post(
 router.patch(
 '/:id',
   asyncHandler(async (req, res)=>{
+    try {
+      TaskValidationSchema.parse(req.body)
+    } catch (e) {
+      res.status(400).json({ error: 'Payload validation failed: title must be < 255 chars and description < 10000 chars' })
+      return
+    }
     const userId=userIdFrom(req)
     const id=req.params.id as string
     if (!id||typeof id!=='string') {

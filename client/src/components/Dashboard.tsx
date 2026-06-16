@@ -29,7 +29,7 @@ export function Dashboard() {
   const tasks=tasksData?.tasks ?? []
   const upcomingEvents=calendarData?.events ?? []
   const lastNote=notes[0]
-  const priorityCounts=tasks.reduce(
+  const priorityCounts=useMemo(() => tasks.reduce(
     (counts, task)=>{
       if (task.priority==='high') counts.high+=1
       else if (task.priority==='medium') counts.medium+=1
@@ -38,7 +38,7 @@ export function Dashboard() {
       return counts
     },
     { high: 0, medium: 0, low: 0, other: 0 }
-  )
+  ), [tasks])
   const cardVariants={
     hidden: { opacity: 0, y: 20 },
     visible: (i: number)=>({

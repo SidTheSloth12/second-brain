@@ -14,6 +14,11 @@ function getLastNDays(n: number) {
   }
   return days
 }
+function toLocalDateString(d: Date) {
+  const pad=(n: number)=>String(n).padStart(2,'0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 function calculateStreak(habit: Habit, today: Date): number {
   if (!habit.logs||habit.logs.length===0) return 0
   const completedDates=new Set(
@@ -24,14 +29,13 @@ function calculateStreak(habit: Habit, today: Date): number {
   let streak=0
   const d=new Date(today)
   d.setHours(0, 0, 0, 0)
-  const todayStr=d.toISOString().slice(0, 10)
+  const todayStr=toLocalDateString(d)
   if (completedDates.has(todayStr)) {
     streak++
-  } else {
   }
   d.setDate(d.getDate()-1)
-  while (true) {
-    const dateStr=d.toISOString().slice(0, 10)
+  for (let i = 0; i < habit.logs.length + 1; i++) {
+    const dateStr=toLocalDateString(d)
     if (completedDates.has(dateStr)) {
       streak++
       d.setDate(d.getDate()-1)
@@ -76,8 +80,7 @@ export function HabitsPage() {
     const today=new Date()
     today.setHours(23, 59, 59, 999)
     if (date>today) return
-    const pad=(n: number)=>String(n).padStart(2,'0')
-    const dateStr =`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+    const dateStr = toLocalDateString(date)
     toggleMut.mutate({ id: habitId, date: dateStr })
   }
   const last7Days=useMemo(()=>getLastNDays(7), [])
@@ -91,8 +94,7 @@ export function HabitsPage() {
       <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Flame className="h-8 w-8 text-orange-500" />
-            Habits Tracker
+            Habit Tracker
           </h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Build consistency. Track your daily routines and maintain your streaks.
@@ -178,7 +180,7 @@ export function HabitsPage() {
                       </td>
                       {last7Days.map((day, i)=>{
                         const isFuture=day>today
-                        const dateStr=day.toISOString().slice(0, 10)
+                        const dateStr=toLocalDateString(day)
                         const isCompleted=habit.logs?.some(
                           (l)=>l.completed&&new Date(l.date).toISOString().slice(0, 10)===dateStr
                         )

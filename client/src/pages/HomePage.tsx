@@ -3,31 +3,24 @@ import { Dashboard } from'../components/Dashboard'
 import { useAuth } from'../auth/useAuth'
 import lines from'../data/lines.json'
 import { motion, AnimatePresence } from'framer-motion'
+import { useLocalStorage } from '../hooks/useLocalStorage'
+
 const STORAGE_KEY ='lineIndex'
+
 function getInitialIndex(): number {
-  try {
-    const stored=localStorage.getItem(STORAGE_KEY)
-    if (stored!==null) {
-      const parsed=parseInt(stored, 10)
-      if (!isNaN(parsed)&&parsed>=0&&parsed<lines.length) return parsed
-    }
-  } catch {}
   const seed=new Date().toDateString().split('').reduce((a, b)=>a+b.charCodeAt(0), 0)
   return seed % lines.length
 }
+
 export function HomePage() {
   const { user }=useAuth()
-  const [quoteIndex, setQuoteIndex]=useState<number>(getInitialIndex)
+  const [quoteIndex, setQuoteIndex]=useLocalStorage<number>(STORAGE_KEY, getInitialIndex)
   const [spinning, setSpinning]=useState(false)
   const handleNext=useCallback(()=>{
     setSpinning(true)
     setTimeout(()=>setSpinning(false), 400)
-    setQuoteIndex(prev=>{
-      const next=(prev+1) % lines.length
-      try { localStorage.setItem(STORAGE_KEY, String(next)) } catch {}
-      return next
-    })
-  }, [])
+    setQuoteIndex(prev=> (prev+1) % lines.length)
+  }, [setQuoteIndex])
   return (
     <div className="relative flex min-h-[calc(100vh-4rem)] w-full flex-col items-center py-12 px-4">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_20%,transparent_100%)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)]" />

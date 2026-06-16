@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from'@tanstack/react-query'
 import { useEffect, useState } from'react'
-import axios from'axios'
+
 import { fetchTaskLists, fetchTasks, createTask, updateTask, deleteTask, updateTaskList } from'../lib/tasksApi'
 import { useConfetti } from'../hooks/useConfetti'
 import type { Task, TaskFilter } from'../types/task'
@@ -82,12 +82,7 @@ export function TasksPage() {
       }
     } catch {}
   }
-  const errMsg =
-    error&&axios.isAxiosError(error)
-      ? (error.response?.data as { error?:string })?.error
-      : error
-      ?'Could not load tasks'
-      : null
+  const errMsg = error ? (error as Error).message : null
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="flex flex-col gap-8 md:flex-row md:items-start">

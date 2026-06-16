@@ -1,205 +1,130 @@
 # Second Brain
 
-A personal knowledge management web app inspired by Obsidian. Built to capture notes, tasks, journal entries, and calendar events in one unified, beautifully minimal interface.
+A comprehensive personal knowledge management and productivity application built with a modern web stack. Second Brain helps you organize your notes, track habits, manage tasks, and keep a daily journal—all in one place.
 
----
+## Architecture Overview
 
-## The Goal
+The application follows a standard client-server architecture with a RESTful API backend communicating with a relational database.
 
-The basic idea: one place for everything: notes, tasks, journal, calendar. Wired together so your thinking actually connects. Eliminates the need to switch between five apps. Real, usable and most importantly, *yours*.
+### System Diagram
 
----
+```mermaid
+graph TD
+    Client[Client (React SPA)] -->|REST API over HTTP| API[Server (Express API)]
+    API -->|Prisma ORM| DB[(Supabase PostgreSQL)]
+```
+
+- **Client:** A Single Page Application (SPA) built with React, Vite, and Tailwind CSS. It uses React Query for efficient data fetching, caching, and state synchronization. It communicates with the backend exclusively via RESTful endpoints.
+- **Server:** A Node.js backend using Express.js. It handles authentication, data validation (via Zod), and domain logic (such as syncing wiki-style note links). 
+- **Database:** A PostgreSQL database hosted on Supabase. It uses raw SQL `to_tsvector` GIN indexes for performant full-text searches across notes and journals. 
+
+## Folder Structure
+
+The repository is organized into a monorepo containing two main packages: `client` and `server`.
+
+```text
+second-brain/
+├── client/                     # Frontend React application
+│   ├── public/                 # Static public assets
+│   └── src/
+│       ├── assets/             # Images and design assets
+│       ├── auth/               # Authentication contexts and hooks
+│       ├── components/         # Reusable UI components
+│       ├── context/            # React context providers
+│       ├── data/               # Static data files (e.g., quotes)
+│       ├── hooks/              # Custom React hooks (e.g., useLocalStorage)
+│       ├── lib/                # API clients and utility functions
+│       ├── pages/              # Application views/routes
+│       └── types/              # TypeScript type definitions
+├── server/                     # Backend Express API
+│   ├── prisma/                 # Prisma schema and migrations
+│   ├── src/
+│   │   ├── __tests__/          # Vitest unit and integration tests
+│   │   ├── domain/             # Core business logic (NoteService, TaskService)
+│   │   ├── lib/                # Backend utilities (slugification, wiki link parsing)
+│   │   ├── middleware/         # Express middlewares (auth, error handling)
+│   │   ├── routes/             # Express API route controllers
+│   │   ├── utils/              # Helper functions (async wrappers)
+│   │   └── index.ts            # Application entry point
+│   └── Dockerfile              # Docker configuration for production builds
+└── docker-compose.yml          # Local development orchestration
+```
 
 ## Features
 
-- **Notes** — Create and edit markdown notes with a live-preview editor (CodeMirror 6). Organize notes into folders with drag-and-drop support.
-- **Knowledge Graph** — Visualize connections between notes as an interactive force-directed graph. Click any node to navigate directly to that note.
-- **Tasks** — Manage tasks with priorities, due dates, subtasks, and completion states. Includes confetti on task completion :)
-- **Calendar** — Schedule and view events on a monthly calendar with a clean agenda sidebar.
-- **Journal** — Write daily journal entries with a minimal, distraction-free interface. 
-- **Habits** — Track your daily routines and build consistency over time.
-- **Full-Text Search** — Search across all notes and content instantly with partial string matching.
-- **Dark / Light Mode** — Theme toggle.
-- **Authentication** — JWT-based auth with bcrypt password hashing and protected routes. 
-
----
+- **Notes & Knowledge Graph:** Create interconnected notes using wiki-style links and visualize them through an interactive knowledge graph. Features full-text search optimized with PostgreSQL GIN indexing.
+- **Task Management:** Manage your to-do lists, prioritize tasks, and track completions.
+- **Habit Tracker:** Log daily habits, track streaks, and visualize your progress over time.
+- **Journal:** Write daily journal entries to capture your thoughts and reflections.
+- **Calendar:** Keep track of upcoming events and deadlines.
+- **Dashboard:** A unified view of your most important information, including priority tasks, recent notes, and upcoming calendar events.
 
 ## Tech Stack
 
-### Frontend
-| Technology | Purpose |
-|---|---|
-| React 19 + TypeScript | UI framework |
-| Vite | Build tool & dev server |
-| Tailwind CSS | Styling |
-| React Router v7 | Client-side routing |
-| TanStack Query v5 | Server state & caching |
-| CodeMirror 6 | Live markdown editor |
-| Framer Motion | Page transitions & animations |
-| react-force-graph-2d | Knowledge graph visualization |
-| Lucide React | Icon library |
-| Axios | HTTP client |
+### Client (Frontend)
+- **Framework:** React + Vite
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS + Framer Motion (for animations)
+- **Data Fetching:** React Query (@tanstack/react-query)
+- **Routing:** React Router
 
-### Backend
-| Technology | Purpose |
-|---|---|
-| Node.js + Express 5 | REST API server |
-| TypeScript | Type safety |
-| PostgreSQL | Relational database |
-| Prisma | Typescript ORM |
-| Supabase | Hosted Postgres (recommended) |
-| JWT | Authentication tokens |
-| bcryptjs | Password hashing |
+### Server (Backend)
+- **Framework:** Express
+- **Language:** TypeScript
+- **Database ORM:** Prisma
+- **Database Engine:** PostgreSQL (hosted on Supabase)
+- **Validation:** Zod
 
-### Deployment
-| Component | Platform | Purpose |
-|---|---|---|
-| Frontend | [Vercel](https://vercel.com/) | Fast Vite static hosting & CDN |
-| Backend | [Render](https://render.com/) | Node.js Express API Web Service |
-| Database | [Supabase](https://supabase.com/) | Managed PostgreSQL database & pooler |
+## Deployment & Hosting
 
----
-
-## Architecture
-
-Standard client-server setup. The frontend handles all UI and interaction, talking to a REST API backend that manages business logic and data. PostgreSQL stores all the notes, tasks, events, journal entries with a dedicated `note_links` table tracking connections between notes for the graph view.
-
-Authentication runs through JWT tokens. The graph view queries note relationships from the database and renders them as an interactive force directed graph on the frontend. The whole thing actually talks to itself like it's supposed to.
-
----
+- **Database:** Hosted in the cloud on **Supabase** (PostgreSQL). Supabase manages the connection pooling and provides a direct connection for migrations.
+- **Application Deployment:** The application is deployed seamlessly using **Vercel**, providing edge-network performance, CI/CD integration, and easy environment variable management.
 
 ## Getting Started
 
 ### Prerequisites
+- Node.js (v18 or newer recommended)
+- A Supabase project (for PostgreSQL)
+- A Vercel account (if you intend to deploy your own instance)
 
-- Node.js ≥ 18
-- A PostgreSQL database (local or [Supabase](https://supabase.com) — Supabase is beginner-friendlier and honestly just easier)
+### Environment Variables
 
-### 1. Clone the repository
+1. Copy `.env.example` to `.env` in the `server` directory.
+2. Update the `DATABASE_URL` and `DIRECT_URL` with your Supabase credentials. Ensure your pooler URL uses port `6543`.
+3. In the `client` directory, create a `.env` file and set `VITE_API_URL` to point to your backend. (When deploying to Vercel, you will set this in the Vercel dashboard).
 
-```bash
-git clone https://github.com/SidTheSloth12/second-brain.git
-cd second-brain
-```
+### Installation
 
-### 2. Set up the server
+1. Install dependencies for the server:
+   ```bash
+   cd server
+   npm install
+   ```
+2. Generate Prisma client and apply migrations to your Supabase database:
+   ```bash
+   npx prisma generate
+   npx prisma migrate deploy
+   ```
+3. Install dependencies for the client:
+   ```bash
+   cd ../client
+   npm install
+   ```
 
+### Running Locally
+
+To run the application locally, you will need to start both the server and the client.
+
+**Start the Server:**
 ```bash
 cd server
-npm install
-cp .env.example .env
-```
-
-Edit `.env` with your values:
-
-```env
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-JWT_SECRET=your_32_char_secret_here
-FRONTEND_ORIGINS=http://localhost:5173
-PORT=5000
-```
-
-Initialize the database using Prisma:
-
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-Start the server:
-
-```bash
 npm run dev
 ```
 
-### 3. Set up the client
-
+**Start the Client:**
 ```bash
-cd ../client
-npm install
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-VITE_API_URL=http://localhost:5000
-```
-
-Start the client:
-
-```bash
+cd client
 npm run dev
 ```
 
-App is live at **http://localhost:5173**. 
-
----
-
-## Project Structure
-
-```
-second-brain/
-├── client/                  # React frontend
-│   └── src/
-│       ├── components/      # Reusable UI components
-│       │   ├── notes/       # Note editor, graph, sidebar
-│       │   ├── journal/     # Journal components
-│       │   └── calendar/    # Calendar components
-│       ├── pages/           # Route-level page components
-│       │   ├── notes/       # Notes layout, edit, graph views
-│       │   ├── TasksPage    # Task manager
-│       │   ├── JournalPage  # Daily journal
-│       │   ├── CalendarPage # Calendar & events
-│       │   └── SearchPage   # Full-text search
-│       ├── hooks/           # Custom React hooks
-│       ├── context/         # Auth context
-│       └── types/           # Shared TypeScript types
-│
-└── server/                  # Express backend
-    ├── src/
-    │   ├── routes/          # API route handlers
-    │   │   ├── notes.ts
-    │   │   ├── tasks.ts
-    │   │   ├── folders.ts
-    │   │   ├── journal.ts
-    │   │   ├── calendar.ts
-    │   │   ├── events.ts
-    │   │   ├── search.ts
-    │   │   └── auth.ts
-    │   ├── middleware/      # Auth middleware
-    │   ├── domain/          # Business logic
-    │   └── db.ts            # Database connection
-    └── sql/                 # Schema migration files
-```
-
----
-
-## API Overview
-
-All routes are prefixed with `/api` and require a `Bearer` JWT token — except `/api/auth`, which is how you get the token in the first place.
-
-| Method | Route | Description |
-|---|---|---|
-| `POST` | `/api/auth/register` | Create a new account |
-| `POST` | `/api/auth/login` | Login and receive a JWT |
-| `GET/POST` | `/api/notes` | List / create notes |
-| `GET/PUT/DELETE` | `/api/notes/:id` | Get / update / delete a note |
-| `GET/POST` | `/api/folders` | List / create folders |
-| `GET/POST` | `/api/tasks` | List / create tasks |
-| `GET/POST` | `/api/journal` | List / create journal entries |
-| `GET/POST` | `/api/habits` | List / create habits |
-| `GET/POST` | `/api/events` | List / create calendar events |
-| `GET` | `/api/search?q=` | Full-text search across notes |
-
----
-
-## Why Did I Build A "Second Brain"?
-> *My first brain already has enough going on.*
-
-I miss things if I don't write them down, and I got tired of my notes living in one app, my tasks in another, and my calendar somewhere else entirely. Yes, Google has done the integration thing already, and done it well. What I've built is essentially a budget version of that, except with linked notes and a graph view, which Google doesn't have.
-The Obsidian-style notes, folder structure, and graph view are how I (try to) organize my thoughts and ideas. I think about a lot of things. They need a map. The calendar and tasks just keep my life running smoothly enough that I have time to do that.
-
-Regarding the "Lines" section, it was made out of pure boredom. Lines I've come across from TV shows, books, movies, or the Internet. There's some real poetic beauty in there :)
-
----
+Your application should now be accessible at `http://localhost:5173`.
