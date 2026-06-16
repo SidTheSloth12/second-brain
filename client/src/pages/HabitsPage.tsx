@@ -117,6 +117,11 @@ export function HabitsPage() {
           </button>
         </form>
       </div>
+      {createMut.isError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300">
+          <strong>Failed to add habit.</strong> If you recently deployed the database update, please make sure your server's Prisma client is regenerated and restarted.
+        </div>
+      )}
       {isLoading ? (
         <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
           <p className="animate-pulse text-sm font-medium text-slate-500">Loading your habits...</p>

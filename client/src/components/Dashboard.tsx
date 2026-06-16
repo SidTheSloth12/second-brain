@@ -34,7 +34,7 @@ export function Dashboard() {
       if (task.priority==='high') counts.high+=1
       else if (task.priority==='medium') counts.medium+=1
       else if (task.priority==='low') counts.low+=1
-      else counts.other+=1
+      else counts.low+=1
       return counts
     },
     { high: 0, medium: 0, low: 0, other: 0 }

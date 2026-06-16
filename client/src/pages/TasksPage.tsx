@@ -44,7 +44,7 @@ export function TasksPage() {
     enabled: Boolean(selectedListId),
   })
   const tasks=tasksData?.tasks ?? []
-  const total=tasksData?.total ?? 0
+  const total=tasksData?.total ? tasksData.total : tasks.length
   const invalidate=()=>{
     queryClient.invalidateQueries({ queryKey: ['tasks'] })
     queryClient.invalidateQueries({ queryKey: ['task-lists'] })

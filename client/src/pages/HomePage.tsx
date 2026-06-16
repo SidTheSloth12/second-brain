@@ -29,24 +29,26 @@ export function HomePage() {
     })
   }, [])
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 space-y-10">
-      <motion.div
-        initial={{ opacity: 0, y:-20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease:'easeOut' }}
-        className="space-y-2"
-      >
-        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Welcome back!</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
-          Signed in as<span className="font-semibold text-violet-600 dark:text-violet-400">{user?.email}</span>
-        </p>
-      </motion.div>
+    <div className="relative flex min-h-[calc(100vh-4rem)] w-full flex-col items-center py-12 px-4">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_20%,transparent_100%)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)]" />
+      <div className="w-full max-w-6xl space-y-10">
+        <motion.div
+          initial={{ opacity: 0, y:-20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease:'easeOut' }}
+          className="space-y-2 text-center"
+        >
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">Welcome back!</h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400">
+            Signed in as <span className="font-semibold text-violet-600 dark:text-violet-400">{user?.email}</span>
+          </p>
+        </motion.div>
       <Dashboard/>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5, ease:'easeOut' }}
-        className="rounded-3xl border border-slate-200 bg-white/60 p-8 shadow-sm backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/40 relative overflow-hidden group hover:border-violet-200 dark:hover:border-violet-500/20 transition-colors"
+        className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white/60 p-6 shadow-sm backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/40 relative overflow-hidden group hover:border-violet-200 dark:hover:border-violet-500/20 transition-colors"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity dark:from-violet-900/10"></div>
         <div className="relative z-10">
@@ -80,7 +82,7 @@ export function HomePage() {
               Next
             </button>
           </div>
-          <div className="min-h-[100px] flex flex-col justify-center mt-6">
+          <div className="flex flex-col justify-center mt-4">
             <AnimatePresence mode="wait">
               <motion.blockquote
                 key={quoteIndex}
@@ -88,19 +90,20 @@ export function HomePage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x:-20 }}
                 transition={{ duration: 0.3 }}
-                className="text-2xl font-medium leading-relaxed italic text-slate-800 dark:text-slate-200"
+                className="text-lg font-medium leading-relaxed italic text-slate-800 dark:text-slate-200 text-center"
               >
                 "{lines[quoteIndex]}"
               </motion.blockquote>
             </AnimatePresence>
           </div>
-          <div className="mt-8 flex justify-end">
-            <p className="text-sm font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full select-none">
+          <div className="mt-4 flex justify-end">
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full select-none">
               {quoteIndex+1}/{lines.length}
             </p>
           </div>
         </div>
       </motion.div>
+      </div>
     </div>
   )
 }
