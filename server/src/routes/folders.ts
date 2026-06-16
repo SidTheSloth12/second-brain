@@ -52,7 +52,7 @@ router.patch(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const data: any={}
     if (req.body?.name!==undefined) {
       const name=String(req.body.name).trim()
@@ -86,7 +86,7 @@ router.delete(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const deletedFolder=await prisma.folder.deleteMany({
       where: { user_id: userId, id },
     })

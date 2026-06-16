@@ -48,7 +48,7 @@ router.get(
 '/:date',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const date=req.params.date asstring
+    const date=req.params.date as string
     if (!DATE_RE.test(date)) {
       res.status(400).json({ error:'date must be YYYY-MM-DD' })
       return
@@ -76,7 +76,7 @@ router.patch(
 '/:date',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const date=req.params.date asstring
+    const date=req.params.date as string
     if (!DATE_RE.test(date)) {
       res.status(400).json({ error:'date must be YYYY-MM-DD' })
       return
@@ -121,7 +121,7 @@ router.delete(
 '/:date',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const date=req.params.date asstring
+    const date=req.params.date as string
     if (!DATE_RE.test(date)) {
       res.status(400).json({ error:'date must be YYYY-MM-DD' })
       return

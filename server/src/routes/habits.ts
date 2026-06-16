@@ -48,7 +48,7 @@ router.delete(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const habit=await prisma.habit.findUnique({ where: { id } })
     if (!habit||habit.user_id!==userId) {
       res.status(404).json({ error:'Habit not found' })
@@ -62,7 +62,7 @@ router.post(
 '/:id/toggle',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const habitId=req.params.id asstring
+    const habitId=req.params.id as string
     const dateStr=typeof req.body?.date==='string' ? req.body.date :''
     if (!dateStr) {
       res.status(400).json({ error:'Date is required (YYYY-MM-DD)' })

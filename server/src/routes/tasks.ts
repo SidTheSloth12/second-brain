@@ -35,7 +35,7 @@ router.get(
 '/',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const statusFilter=req.query.status asstring
+    const statusFilter=req.query.status as string
     const listId=parseListId(req.query.listId)
     const limitRaw=Number(req.query.limit)
     const limit=Number.isFinite(limitRaw) ? Math.max(1, limitRaw) : 50
@@ -115,7 +115,7 @@ router.patch(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     if (!id||typeof id!=='string') {
       res.status(400).json({ error:'Invalid task id' })
       return
@@ -195,7 +195,7 @@ router.delete(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const deletedTask=await prisma.task.deleteMany({
       where: { user_id: userId, id },
     })
@@ -246,7 +246,7 @@ router.patch(
 '/lists/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const name=typeof req.body?.name==='string' ? req.body.name.trim() :''
     if (!name) {
       res.status(400).json({ error:'List name is required' })
@@ -271,7 +271,7 @@ router.delete(
 '/lists/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const taskCount=await prisma.task.count({
       where: { user_id: userId, task_list_id: id },
     })

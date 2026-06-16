@@ -54,7 +54,7 @@ router.get(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const event=await prisma.event.findUnique({
       where: { id },
     })
@@ -103,7 +103,7 @@ router.patch(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     if (!id) {
       res.status(400).json({ error:'Invalid id' })
       return
@@ -170,7 +170,7 @@ router.delete(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const deletedEvent=await prisma.event.deleteMany({
       where: { user_id: userId, id },
     })

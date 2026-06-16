@@ -52,10 +52,10 @@ async function syncNoteLinks(userId:string, fromNoteId:string, content:string) {
 function normalizeTagName(name:string) {
   return name.trim()
 }
-async function syncNoteTags(userId:string, noteId:string, tags: readonlystring[]) {
+async function syncNoteTags(userId:string, noteId:string, tags: readonly string[]) {
   const cleaned=tags.map(normalizeTagName).filter((tag)=>tag.length>0)
   const uniqueTags=Array.from(new Set(cleaned.map((tag)=>tag.toLowerCase()))).map(
-    (lower)=>cleaned.find((tag)=>tag.toLowerCase()===lower) asstring
+    (lower)=>cleaned.find((tag)=>tag.toLowerCase()===lower) as string
   )
   await prisma.noteTag.deleteMany({ where: { note_id: noteId } })
   if (uniqueTags.length===0) return
@@ -145,7 +145,7 @@ router.get(
 '/:id/backlinks',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const links=await prisma.noteLink.findMany({
       where: { to_note_id: id, user_id: userId },
       include: { from_note: true },
@@ -159,7 +159,7 @@ router.get(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const note=await fetchNoteDetail(userId, id)
     if (!note) {
       res.status(404).json({ error:'Note not found' })
@@ -202,7 +202,7 @@ router.patch(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const data: any={}
     let newTags:string[] | undefined
     if (req.body?.title!==undefined) {
@@ -261,7 +261,7 @@ router.delete(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const deletedNote=await prisma.note.deleteMany({
       where: { user_id: userId, id },
     })

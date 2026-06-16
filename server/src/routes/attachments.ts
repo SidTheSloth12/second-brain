@@ -69,7 +69,7 @@ router.delete(
 '/:id',
   asyncHandler(async (req, res)=>{
     const userId=userIdFrom(req)
-    const id=req.params.id asstring
+    const id=req.params.id as string
     const attachment=await prisma.attachment.findUnique({ where: { id } })
     if (!attachment||attachment.user_id!==userId) {
       res.status(404).json({ error:'Attachment not found' })
