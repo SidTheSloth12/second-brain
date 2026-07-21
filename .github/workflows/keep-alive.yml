@@ -14,9 +14,40 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # ⬇️ REPLACE 'your_table_name' WITH ANY REAL TABLE NAME FROM YOUR DATABASE
+          TABLE_NAME: "events"
         run: |
-          # Clean trailing slashes if present
-          URL=$(echo "${SUPABASE_URL}" | sed 's/*$//')
-          
-          curl -f -i -X GET "${URL}/rest/v1/" \
-            -H "apikey: ${SUPABASE_ANON_KEY}"
+          node -e '
+            const url = process.env.SUPABASE_URL;
+            const key = process.env.SUPABASE_ANON_KEY;
+            const table = process.env.TABLE_NAME;
+            
+            if (!url || !key) {
+              console.error("Error: Secrets are missing.");
+              process.exit(1);
+            }
+
+            // Build target URL querying 1 row from your table
+            const cleanUrl = `${url.replace(/\/+$/, "")}/rest/v1/${table}?select=*&limit=1`;
+            console.log("Pinging URL:", cleanUrl);
+
+            fetch(cleanUrl, {
+              headers: { 
+                "apikey": key,
+                "Authorization": `Bearer ${key}`
+              }
+            })
+            .then(res => {
+              console.log("HTTP Response Status:", res.status, res.statusText);
+              if (res.status >= 200 && res.status < 400) {
+                console.log("Success! Active connection registered with Supabase.");
+              } else {
+                console.error(`Received HTTP status ${res.status}. Check if table name or API key is correct.`);
+                process.exit(1);
+              }
+            })
+            .catch(err => {
+              console.error("Fetch error:", err);
+              process.exit(1);
+            });
+          '
