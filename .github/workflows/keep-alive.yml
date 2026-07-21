@@ -2,9 +2,9 @@ name: Keep Supabase Active
 
 on:
   schedule:
-    # Runs at 00:00 UTC every Monday and Thursday
-    - cron: '0 0 * * 1,4'
-  workflow_dispatch:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 */1 * *'
+  workflow_dispatch: # Keeps the manual "Run workflow" button available
 
 jobs:
   ping-supabase:
@@ -14,8 +14,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          # ⬇️ REPLACE 'your_table_name' WITH ANY REAL TABLE NAME FROM YOUR DATABASE
-          TABLE_NAME: "events"
+          TABLE_NAME: "your_table_name" # Make sure your real table name is here!
         run: |
           node -e '
             const url = process.env.SUPABASE_URL;
@@ -27,7 +26,6 @@ jobs:
               process.exit(1);
             }
 
-            // Build target URL querying 1 row from your table
             const cleanUrl = `${url.replace(/\/+$/, "")}/rest/v1/${table}?select=*&limit=1`;
             console.log("Pinging URL:", cleanUrl);
 
