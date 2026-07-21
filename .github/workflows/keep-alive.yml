@@ -2,6 +2,7 @@ name: Keep Supabase Active
 
 on:
   schedule:
+    # Runs at 00:00 UTC every Monday and Thursday
     - cron: '0 0 * * 1,4'
   workflow_dispatch:
 
@@ -14,6 +15,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          curl -f -X GET "${SUPABASE_URL}/rest/v1/" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"
+          # Clean trailing slashes if present
+          URL=$(echo "${SUPABASE_URL}" | sed 's/*$//')
+          
+          curl -f -i -X GET "${URL}/rest/v1/" \
+            -H "apikey: ${SUPABASE_ANON_KEY}"
