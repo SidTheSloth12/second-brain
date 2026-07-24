@@ -14,7 +14,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          TABLE_NAME: "your_table_name" # Make sure your real table name is here!
+          TABLE_NAME: "events" # Make sure your real table name is here!
         run: |
           node -e '
             const url = process.env.SUPABASE_URL;
