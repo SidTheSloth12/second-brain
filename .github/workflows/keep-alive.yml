@@ -2,9 +2,8 @@ name: Keep Supabase Active
 
 on:
   schedule:
-    # Runs at 00:00 UTC every day
     - cron: '0 0 */1 * *'
-  workflow_dispatch: # Keeps the manual "Run workflow" button available
+  workflow_dispatch: 
 
 jobs:
   ping-supabase:
@@ -14,7 +13,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          TABLE_NAME: "events" # Make sure your real table name is here!
+          TABLE_NAME: "events" 
         run: |
           node -e '
             const url = process.env.SUPABASE_URL;
